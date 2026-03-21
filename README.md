@@ -5,7 +5,7 @@ Claude Code × Codex 連携ワークフローのグローバル設定。
 ## セットアップ
 
 ```bash
-git clone <this-repo> ~/claude-dotfiles
+git clone https://github.com/ChlorisSinica/claude-dotfiles.git ~/claude-dotfiles
 bash ~/claude-dotfiles/setup.sh
 ```
 
@@ -13,6 +13,15 @@ bash ~/claude-dotfiles/setup.sh
 
 - `commands/init-project.md` — `/init-project` グローバルコマンド
 - `templates/project-init/` — プロジェクト初期化テンプレート
+
+## 更新
+
+```bash
+cd ~/claude-dotfiles
+git pull
+bash setup.sh       # 新規ファイルのみコピー
+bash setup.sh -f    # 全ファイル上書き（既存を更新したい場合）
+```
 
 ## 使い方
 
