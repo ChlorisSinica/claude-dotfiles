@@ -1,0 +1,37 @@
+{
+  "python": {
+    "LANG": "Python",
+    "VERIFY_CMD": "python -m pytest --tb=short -q",
+    "LANG_RULES": "- **Type hints**: Use type hints for function signatures.\n- **Imports**: Follow PEP 8 import ordering (stdlib, third-party, local).\n- **f-strings**: Prefer f-strings over .format() or % formatting.\n- **Context managers**: Use `with` for file/resource handling.\n- **Exception handling**: Catch specific exceptions, never bare `except:`.\n- **Docstrings**: Follow Google or NumPy style.\n- **Reference**: https://peps.python.org/pep-0008/",
+    "FILE_PATTERNS": "**/*.py",
+    "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build"
+  },
+  "python-pytorch": {
+    "LANG": "Python / PyTorch",
+    "VERIFY_CMD": "python -m pytest --tb=short -q && python -c \"import torch; print(f'PyTorch {torch.__version__} OK')\"",
+    "LANG_RULES": "- **Type hints**: Use type hints for function signatures.\n- **Imports**: Follow PEP 8 import ordering (stdlib, third-party, local).\n- **f-strings**: Prefer f-strings over .format() or % formatting.\n- **Context managers**: Use `with` for file/resource handling.\n- **Exception handling**: Catch specific exceptions, never bare `except:`.\n- **Tensor operations**: Prefer vectorized ops over Python loops.\n- **Device handling**: Always handle CPU/GPU device placement explicitly.\n- **Memory**: Use `torch.no_grad()` for inference, detach tensors when needed.\n- **Reproducibility**: Set random seeds where applicable.\n- **Reference**: https://pytorch.org/docs/stable/",
+    "FILE_PATTERNS": "**/*.py",
+    "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build,wandb,runs,checkpoints"
+  },
+  "typescript": {
+    "LANG": "TypeScript",
+    "VERIFY_CMD": "npx tsc --noEmit && npm test",
+    "LANG_RULES": "- **Strict mode**: `strict: true` in tsconfig.json.\n- **No `any`**: Avoid `any` type; use `unknown` + type narrowing.\n- **Null safety**: Use optional chaining (?.) and nullish coalescing (??).\n- **Async/await**: Prefer over raw Promises.\n- **Error handling**: Always handle Promise rejections.\n- **Imports**: Use named imports, avoid default exports where possible.\n- **Reference**: https://www.typescriptlang.org/docs/",
+    "FILE_PATTERNS": "**/*.ts,**/*.tsx",
+    "EXCLUDE_DIRS": "node_modules,dist,build,.next"
+  },
+  "rust": {
+    "LANG": "Rust",
+    "VERIFY_CMD": "cargo check && cargo test",
+    "LANG_RULES": "- **Error handling**: Use `Result<T, E>` and `?` operator; avoid `.unwrap()` in production code.\n- **Ownership**: Follow ownership/borrowing rules strictly.\n- **Clippy**: Code must pass `cargo clippy` without warnings.\n- **Formatting**: Must pass `cargo fmt --check`.\n- **unsafe**: Avoid `unsafe` blocks unless absolutely necessary with safety comments.\n- **Reference**: https://doc.rust-lang.org/book/",
+    "FILE_PATTERNS": "**/*.rs",
+    "EXCLUDE_DIRS": "target"
+  },
+  "autohotkey-v2": {
+    "LANG": "AutoHotkey v2",
+    "VERIFY_CMD": "& \"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" /ErrorStdOut main.ahk",
+    "LANG_RULES": "- **v1 syntax forbidden**: No `MsgBox text`, no `If var = value`, no legacy commands.\n- **Commands are functions**: `MsgBox(\"text\")` NOT `MsgBox, text`.\n- **`:=` for ALL assignments**.\n- **NO `%var%`** (use direct variable reference).\n- **Globals**: Explicit `global` declaration required.\n- **Expressions**: All conditions use parentheses: `if (cond)`, `while (cond)`.\n- **Strings**: Prefer `\"double quotes\"`.\n- **Objects**: Use `Map()`/`Array()`.\n- **Reference**: https://www.autohotkey.com/docs/v2/",
+    "FILE_PATTERNS": "**/*.ahk",
+    "EXCLUDE_DIRS": ""
+  }
+}
