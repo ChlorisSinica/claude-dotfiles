@@ -5,9 +5,11 @@ Claude Code × Codex 連携ワークフローのグローバル設定。
 ## セットアップ
 
 ```bash
-git clone https://github.com/ChlorisSinica/claude-dotfiles.git ~/claude-dotfiles
-bash ~/claude-dotfiles/setup.sh
+git clone https://github.com/ChlorisSinica/claude-dotfiles.git "%USERPROFILE%\claude-dotfiles"
+bash "%USERPROFILE%\claude-dotfiles\setup.sh"
 ```
+
+> **注意**: Git Bash では `~/claude-dotfiles` でも可。PowerShell/コマンドプロンプトでは `%USERPROFILE%` を使用してください。
 
 `~/.claude/` に以下がインストールされます:
 
@@ -17,7 +19,7 @@ bash ~/claude-dotfiles/setup.sh
 ## 更新
 
 ```bash
-cd ~/claude-dotfiles
+cd "%USERPROFILE%\claude-dotfiles"
 git pull
 bash setup.sh       # 新規ファイルのみコピー
 bash setup.sh -f    # 全ファイル上書き（既存を更新したい場合）
