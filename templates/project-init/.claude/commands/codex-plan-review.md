@@ -59,13 +59,7 @@ cat .claude/context/_codex_input.tmp | codex review -
 - レビュー結果は毎回 `.claude/context/codex_plan_tasks_review.md` を上書き更新する
 - snippets.md のコードは擬似コードとして扱い、構文の厳密性は検証しないこと
 
-## 自動コミット & プッシュ
+## 注意
 
-APPROVED または DISCUSS（ユーザー判断で終了）でサイクル終了後:
-
-1. `git add .claude/context/plan.md .claude/context/tasks.md .claude/context/snippets.md .claude/context/codex_plan_tasks_review.md`（存在するファイルのみ）
-2. コミットメッセージ: `docs: update plan.md + tasks.md (codex-plan-review APPROVED/DISCUSS)`
-3. `git push`
-4. コミット・プッシュ完了をユーザーに報告
-
-**Co-Authored-By**: `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>` をコミットメッセージ末尾に付与。
+- `.claude/context/` 配下のファイル（plan.md, tasks.md, snippets.md, codex_plan_tasks_review.md）は **Git 管理しない**（ローカル作業ファイル）
+- 自動コミット・プッシュは行わない

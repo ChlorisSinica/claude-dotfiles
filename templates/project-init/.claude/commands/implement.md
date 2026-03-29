@@ -25,7 +25,7 @@ LOOP（未完了タスクがなくなるまで）:
      - import エラーが発生した場合: 依存先が別タスクで追加予定なら、そのタスクを先に実行する
   2) 毎回必ず検証コマンドを実行:
      - まず tasks.md の該当タスクの DoD コマンドを実行
-     - 次に全体検証: {{VERIFY_CMD}}
+     - 次に全体検証: "C:\\Program Files\\AutoHotkey\\AutoHotkey.exe" /ErrorStdOut main.ahk
   3) エラーが出たら修正して再実行（エラーが消えるまで次へ進まない）
   4) PASS したら tasks.md の該当タスクを [x] に更新
   5) 同種失敗が3回続いたら停止して .claude/context/failure_report.md に報告 → ユーザーに通知
@@ -46,22 +46,19 @@ END LOOP
 - 新規パラメータを追加した場合、その値の**生成元 → 伝播経路 → 消費先**が全て繋がっていることを確認すること
 - import の追加/変更時は、依存先ファイルの存在と公開インターフェースを確認すること
 
-## 自動コミット & プッシュ
+## コミット
 
-codex-impl-review が APPROVED を返したら、ユーザー確認なしで自動実行:
+codex-impl-review が APPROVED を返したら:
 
 1. `git diff --name-only` で変更ファイル一覧を取得
-2. 変更ファイルを `git add`（`.claude/context/` 配下も含む、ただし `data/`, `logs/` 等の生成物は除外）
+2. **ソースコードの変更のみ** `git add`（`.claude/context/` 配下は Git 管理しない）
 3. 変更内容を分析してコミットメッセージを自動生成（`feat:` / `fix:` / `refactor:` プレフィックス）
-4. `git push`
-5. コミット・プッシュ完了をユーザーに報告
+4. プッシュはユーザーに確認してから行う
 
 **Co-Authored-By**: `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>` をコミットメッセージ末尾に付与。
-
-**除外ルール**: `.gitignore` に記載されたパターン、および untracked のバイナリ/データファイルは `git add` しない。
 
 ## 出力
 
 - コード変更
 - `.claude/context/tasks.md` の全タスクを `[x]` に更新
-- Codex レビュー APPROVED 後、自動コミット & プッシュ
+- Codex レビュー APPROVED 後、ソースコードのみコミット

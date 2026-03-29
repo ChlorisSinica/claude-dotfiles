@@ -65,15 +65,14 @@ cat .claude/context/_codex_input.tmp | codex review -
 - **APPROVED が出るまで自律的に回し続ける**（CONDITIONAL も修正して再送信）
 - レビュー結果は毎回ユーザーへ要点サマリーを出力（判定結果、P0/P1/P2 件数、主要指摘）
 
-## 自動コミット & プッシュ
+## コミット
 
-APPROVED 取得後、`/implement` から呼ばれた場合は `/implement` 側のコミット&プッシュ手順に従う。
-単独で呼ばれた場合は以下を自動実行:
+APPROVED 取得後、`/implement` から呼ばれた場合は `/implement` 側のコミット手順に従う。
+単独で呼ばれた場合:
 
 1. `git diff --name-only` で変更ファイル一覧を取得
-2. 変更ファイルを `git add`（`.claude/context/` 配下も含む）
+2. **ソースコードの変更のみ** `git add`（`.claude/context/` 配下は Git 管理しない）
 3. コミットメッセージ: `fix: apply codex-impl-review fixes`
-4. `git push`
-5. コミット・プッシュ完了をユーザーに報告
+4. プッシュはユーザーに確認してから行う
 
 **Co-Authored-By**: `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>` をコミットメッセージ末尾に付与。

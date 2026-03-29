@@ -11,8 +11,8 @@ description: "Phase 2: plan.md + tasks.md の作成"
 
 ## プロジェクト情報
 
-- **言語/フレームワーク**: {{LANG}}
-- **検証コマンド**: `{{VERIFY_CMD}}`
+- **言語/フレームワーク**: AutoHotkey v1.1
+- **検証コマンド**: `"C:\\Program Files\\AutoHotkey\\AutoHotkey.exe" /ErrorStdOut main.ahk`
 
 ## 前提
 
@@ -54,7 +54,7 @@ Rules:
 - Don't implement yet.
 - TODO items must be verifiable granularity.
 - **Non-Objectives 安全弁**: ユーザーの入力テキスト (`$ARGUMENTS`) に明示的に含まれる要望を Non-Objectives に分類してはならない。スコープから除外したい場合は、plan 作成前にユーザーに確認すること。Non-Objectives には「ユーザーが言及していない関連機能」のみを記載する。
-- **言語制約**: このプロジェクトは {{LANG}} です。検証コマンドは `{{VERIFY_CMD}}` を基準に設計すること。他の言語のツール（例: 別言語のインタプリタ）を検証コマンドに含めないこと。
+- **言語制約**: このプロジェクトは AutoHotkey v1.1 です。検証コマンドは `"C:\\Program Files\\AutoHotkey\\AutoHotkey.exe" /ErrorStdOut main.ahk` を基準に設計すること。他の言語のツール（例: 別言語のインタプリタ）を検証コマンドに含めないこと。
 
 ## 構造ルール
 
@@ -87,16 +87,10 @@ Rules:
 - `.claude/context/tasks.md`
 - `.claude/context/snippets.md`（コードスニペットがある場合）
 
-## 自動コミット & プッシュ
+## 注意
 
-plan.md / tasks.md / snippets.md の作成が完了したら:
-
-1. `git add .claude/context/plan.md .claude/context/tasks.md .claude/context/snippets.md`（存在するファイルのみ）
-2. コミットメッセージ: `docs: create plan.md + tasks.md for <Feature の要約>`
-3. `git push`
-4. コミット・プッシュ完了をユーザーに報告
-
-**Co-Authored-By**: `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>` をコミットメッセージ末尾に付与。
+- `.claude/context/` 配下のファイル（plan.md, tasks.md, snippets.md）は **Git 管理しない**（ローカル作業ファイル）
+- 自動コミット・プッシュは行わない
 
 ## 次のステップ
 
