@@ -16,7 +16,7 @@ description: "Phase 2: plan.md + tasks.md の作成"
 
 ## 前提
 
-- `.context/research.md` が存在すること（存在しない場合はユーザーに通知）
+- `.claude/context/research.md` が存在すること（存在しない場合はユーザーに通知）
 - research.md の**データフローセクション**を必ず参照し、既存の変数/コールバック/ファイル形式との整合性を確認すること
 
 ## 仕様確認ステップ（条件付き）
@@ -79,19 +79,19 @@ Rules:
 
 ## 出力
 
-- `.context/plan.md` — 冒頭に以下のメタデータブロックを必ず含めること:
+- `.claude/context/plan.md` — 冒頭に以下のメタデータブロックを必ず含めること:
   ```markdown
   <!-- USER_REQUEST: $ARGUMENTS -->
   ```
   これは codex-plan-review がユーザー要望カバレッジを検証するために使用する。
-- `.context/tasks.md`
-- `.context/snippets.md`（コードスニペットがある場合）
+- `.claude/context/tasks.md`
+- `.claude/context/snippets.md`（コードスニペットがある場合）
 
 ## 自動コミット & プッシュ
 
 plan.md / tasks.md / snippets.md の作成が完了したら:
 
-1. `git add .context/plan.md .context/tasks.md .context/snippets.md`（存在するファイルのみ）
+1. `git add .claude/context/plan.md .claude/context/tasks.md .claude/context/snippets.md`（存在するファイルのみ）
 2. コミットメッセージ: `docs: create plan.md + tasks.md for <Feature の要約>`
 3. `git push`
 4. コミット・プッシュ完了をユーザーに報告

@@ -4,7 +4,7 @@ description: "汎用コードレビュー: 変更を Codex に送って自動レ
 
 # Codex Code Review
 
-既存の `.agents/workflows/codex_review.md` ワークフローを実行してください。
+既存の `.claude/agents/workflows/codex_review.md` ワークフローを実行してください。
 
 ## 手順
 
@@ -22,7 +22,7 @@ echo "$review_output"
 
 session_id=$(echo "$review_output" | grep -oE '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}' | head -1)
 if [ -n "$session_id" ]; then
-    sessions_file=".agents/sessions.json"
+    sessions_file=".claude/agents/sessions.json"
     if [ -f "$sessions_file" ]; then
         tmp=$(cat "$sessions_file" | python3 -c "import sys,json; d=json.load(sys.stdin); d['last_review']='$session_id'; print(json.dumps(d,indent=2))")
     else
@@ -35,7 +35,7 @@ fi
 
 4. レビュー指摘がある場合、Codex に修正を適用させる:
 ```bash
-sessions_file=".agents/sessions.json"
+sessions_file=".claude/agents/sessions.json"
 session_id=$(cat "$sessions_file" | python3 -c "import sys,json; print(json.load(sys.stdin).get('last_review',''))")
 if [ -n "$session_id" ]; then
     codex exec resume --full-auto "$session_id" "Please apply the suggested fixes from the review to the codebase."

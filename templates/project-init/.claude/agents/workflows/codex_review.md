@@ -4,7 +4,7 @@ description: Automated Code Review and Refinement with Codex
 
 # Automated Code Review and Refinement Workflow
 
-This workflow automatically uses the Codex CLI to review recent code changes, saves the session ID to `.agents/sessions.json` for persistence, solicits follow-up refinement if needed, and loops the review process.
+This workflow automatically uses the Codex CLI to review recent code changes, saves the session ID to `.claude/agents/sessions.json` for persistence, solicits follow-up refinement if needed, and loops the review process.
 
 1. Retrieve the latest uncommitted or staged changes for review.
 ```bash
@@ -18,7 +18,7 @@ Write-Output $reviewOutput
 
 $sessionId = [regex]::Match($reviewOutput, '([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})').Groups[1].Value
 if ($sessionId) {
-    $sessionsFile = ".agents/sessions.json"
+    $sessionsFile = ".claude/agents/sessions.json"
     $sessions = if (Test-Path $sessionsFile) { Get-Content $sessionsFile -Raw | ConvertFrom-Json } else { @{} }
     $sessions.last_review = $sessionId
     $sessions | ConvertTo-Json -Depth 5 | Set-Content $sessionsFile
@@ -30,7 +30,7 @@ if ($sessionId) {
 
 3. Based on the review output, instruct Codex to iteratively apply fixes.
 ```powershell
-$sessionsFile = ".agents/sessions.json"
+$sessionsFile = ".claude/agents/sessions.json"
 if (Test-Path $sessionsFile) {
     $sessions = Get-Content $sessionsFile -Raw | ConvertFrom-Json
     $sessionId = $sessions.last_review

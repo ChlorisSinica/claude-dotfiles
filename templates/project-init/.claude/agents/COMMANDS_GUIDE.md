@@ -81,7 +81,7 @@ Phase 8:  /retro                     ← 振り返り
 
 ## セッション管理
 
-レビューセッションは `.agents/sessions.json` で管理されます。
+レビューセッションは `.claude/agents/sessions.json` で管理されます。
 
 ---
 
@@ -90,13 +90,13 @@ Phase 8:  /retro                     ← 振り返り
 | ファイル | 役割 |
 |---|---|
 | `.agents/master_workflow.md` | マスター手順書（全フェーズのプロンプトとルール） |
-| `.agents/prompts/codex_*.md` | Codex 送信用プロンプトテンプレート |
-| `.agents/workflows/codex_review.md` | 汎用レビューワークフロー |
-| `.agents/workflows/handover.md` | Handover ワークフロー定義 |
-| `.agents/workflows/retro.md` | Retro ワークフロー定義 |
-| `.agents/sessions.json` | セッションID管理 |
-| `.context/research.md` | プロジェクト分析結果 |
-| `.context/plan.md` | 実装計画 |
-| `.context/tasks.md` | タスク一覧（チェックリスト） |
-| `.context/HANDOVER.md` | 引き継ぎ文書 |
-| `.context/KNOWLEDGE.md` | 蓄積された知見 |
+| `.claude/agents/prompts/codex_*.md` | Codex 送信用プロンプトテンプレート |
+| `.claude/agents/workflows/codex_review.md` | 汎用レビューワークフロー |
+| `.claude/agents/workflows/handover.md` | Handover ワークフロー定義 |
+| `.claude/agents/workflows/retro.md` | Retro ワークフロー定義 |
+| `.claude/agents/sessions.json` | セッションID管理 |
+| `.claude/context/research.md` | プロジェクト分析結果 |
+| `.claude/context/plan.md` | 実装計画 |
+| `.claude/context/tasks.md` | タスク一覧（チェックリスト） |
+| `.claude/context/HANDOVER.md` | 引き継ぎ文書 |
+| `.claude/context/KNOWLEDGE.md` | 蓄積された知見 |

@@ -1,10 +1,10 @@
 ---
-description: "セッション振り返りと .context/KNOWLEDGE.md の更新"
+description: "セッション振り返りと .claude/context/KNOWLEDGE.md の更新"
 ---
 
 # Retro — セッション振り返り
 
-今セッションの振り返りを行い、`.context/KNOWLEDGE.md` を更新してください。
+今セッションの振り返りを行い、`.claude/context/KNOWLEDGE.md` を更新してください。
 
 ## 振り返り項目
 
@@ -32,7 +32,7 @@ description: "セッション振り返りと .context/KNOWLEDGE.md の更新"
 
 ## 出力先
 
-`.context/KNOWLEDGE.md` に追記してください。既存のエントリは保持し、新しい知見を追加します。日付セクション (`## YYYY-MM-DD`) で区切ってください。
+`.claude/context/KNOWLEDGE.md` に追記してください。既存のエントリは保持し、新しい知見を追加します。日付セクション (`## YYYY-MM-DD`) で区切ってください。
 
 ## 追加コンテキスト
 
