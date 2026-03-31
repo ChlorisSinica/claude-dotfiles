@@ -2,7 +2,7 @@
 # Claude Code dotfiles installer
 # Usage: bash setup.sh
 #
-# Copies commands/ and templates/ into ~/.claude/
+# Copies commands/, templates/, and dotfiles/ into ~/.claude/
 # Existing files are NOT overwritten (use -f to force).
 
 set -euo pipefail
@@ -43,6 +43,33 @@ echo ""
 # 2. Templates (used by /init-project)
 echo "[templates]"
 copy_tree "$SCRIPT_DIR/templates" "$CLAUDE_DIR/templates"
+echo ""
+
+# 3. Dotfiles (files placed directly into ~/.claude/)
+echo "[dotfiles]"
+copy_tree "$SCRIPT_DIR/dotfiles" "$CLAUDE_DIR"
+echo ""
+
+# 4. Statusline config in settings.json
+echo "[statusline]"
+SETTINGS="$CLAUDE_DIR/settings.json"
+python -c "
+import json, sys, os
+path = sys.argv[1]
+data = {}
+if os.path.exists(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+desired = {'type': 'command', 'command': 'python ~/.claude/statusline.py'}
+if data.get('statusLine') == desired:
+    print('  SKIP  statusLine (already configured)')
+else:
+    data['statusLine'] = desired
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write('\n')
+    print('  SET   statusLine -> python ~/.claude/statusline.py')
+" "$SETTINGS"
 echo ""
 
 echo "=== Done ==="
