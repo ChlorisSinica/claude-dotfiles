@@ -40,5 +40,12 @@
     "LANG_RULES": "- **v1 syntax forbidden**: No `MsgBox text`, no `If var = value`, no legacy commands.\n- **Commands are functions**: `MsgBox(\"text\")` NOT `MsgBox, text`.\n- **`:=` for ALL assignments**.\n- **NO `%var%`** (use direct variable reference).\n- **Globals**: Explicit `global` declaration required.\n- **Expressions**: All conditions use parentheses: `if (cond)`, `while (cond)`.\n- **Strings**: Prefer `\"double quotes\"`.\n- **Objects**: Use `Map()`/`Array()`.\n- **Reference**: https://www.autohotkey.com/docs/v2/",
     "FILE_PATTERNS": "**/*.ahk",
     "EXCLUDE_DIRS": ""
+  },
+  "cpp-msvc": {
+    "LANG": "C++ (MSVC / Visual Studio)",
+    "VERIFY_CMD": "msbuild /m /p:Configuration=Debug /verbosity:minimal",
+    "LANG_RULES": "- **RAII**: リソース管理には `unique_ptr`/`shared_ptr` を使用。生 `new`/`delete` 禁止。\n- **const 参照**: コピー不要な引数は `const&` で渡す。\n- **プリコンパイル済みヘッダ**: `pch.h` 使用中なら全 `.cpp` の先頭で `#include \"pch.h\"` 必須。\n- **インクルード順序**: 1) pch.h 2) 対応する .h 3) 標準ライブラリ 4) サードパーティ 5) プロジェクト内ヘッダ。\n- **警告レベル**: `/W4` でクリーンなこと。`#pragma warning(disable:...)` は最小限に。\n- **MSVC 拡張**: 非標準拡張（`__declspec` 等）は必要時のみ、コメントで理由記載。\n- **ヘッダガード**: `#pragma once` を使用。\n- **文字コード**: `/utf-8` コンパイラオプション使用（VS 2022 デフォルト）。BOM なし UTF-8 推奨。\n- **C++ 標準**: `/std:c++17` 以上を推奨。\n- **STL 活用**: `<algorithm>` 等を活用、手動ループより優先。\n- **例外安全**: SEH (`__try`/`__except`) と C++ 例外を混在させない。\n- **スマートポインタ**: `make_unique`/`make_shared` を優先。\n- **move セマンティクス**: 大きなオブジェクトの所有権移動には `std::move` を活用。\n- **Reference**: https://learn.microsoft.com/en-us/cpp/",
+    "FILE_PATTERNS": "**/*.cpp,**/*.h,**/*.inl,**/*.vcxproj,**/*.sln",
+    "EXCLUDE_DIRS": "x64,x86,Debug,Release,.vs,out,packages,ipch,ARM,ARM64,vcpkg_installed"
   }
 }
