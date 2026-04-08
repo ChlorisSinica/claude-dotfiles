@@ -10,10 +10,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLAUDE_DIR="${HOME:-$USERPROFILE}/.claude"
 FORCE=false
+STATUSLINE=false
 
-if [[ "${1:-}" == "-f" ]]; then
-    FORCE=true
-fi
+for arg in "$@"; do
+    case "$arg" in
+        -f)           FORCE=true ;;
+        --statusline) STATUSLINE=true ;;
+    esac
+done
 
 copy_tree() {
     local src="$1" dest="$2"
@@ -50,18 +54,21 @@ echo "[scripts]"
 copy_tree "$SCRIPT_DIR/scripts" "$CLAUDE_DIR/scripts"
 echo ""
 
-# 4. Statusline
-echo "[statusline]"
-if [[ "$FORCE" == "true" ]]; then
-    bash "$SCRIPT_DIR/setup-statusline.sh" -f 2>&1 | grep -E '^\s+(SKIP|COPY|SET)\s' || true
-else
-    bash "$SCRIPT_DIR/setup-statusline.sh" 2>&1 | grep -E '^\s+(SKIP|COPY|SET)\s' || true
+if [[ "$STATUSLINE" == "true" ]]; then
+    echo "[statusline]"
+    if [[ "$FORCE" == "true" ]]; then
+        bash "$SCRIPT_DIR/setup-statusline.sh" -f 2>&1 | grep -E '^\s+(SKIP|COPY|SET)\s' || true
+    else
+        bash "$SCRIPT_DIR/setup-statusline.sh" 2>&1 | grep -E '^\s+(SKIP|COPY|SET)\s' || true
+    fi
+    echo ""
 fi
-echo ""
 
 echo "=== Done ==="
 echo ""
 echo "Available commands:"
 echo "  /init-project    Set up a new project with Claude Code × Codex workflow"
 echo ""
-echo "To overwrite existing files, run: bash setup.sh -f"
+echo "Options:"
+echo "  -f               Overwrite existing files"
+echo "  --statusline     Also set up the custom status line"
