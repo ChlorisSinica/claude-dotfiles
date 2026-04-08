@@ -40,12 +40,17 @@ echo "[commands]"
 copy_tree "$SCRIPT_DIR/commands" "$CLAUDE_DIR/commands"
 echo ""
 
-# 2. Templates (used by /init-project)
+# 2. Templates (used by init-project.sh)
 echo "[templates]"
 copy_tree "$SCRIPT_DIR/templates" "$CLAUDE_DIR/templates"
 echo ""
 
-# 3. Statusline
+# 3. Scripts (e.g. init-project.sh)
+echo "[scripts]"
+copy_tree "$SCRIPT_DIR/scripts" "$CLAUDE_DIR/scripts"
+echo ""
+
+# 4. Statusline
 echo "[statusline]"
 if [[ "$FORCE" == "true" ]]; then
     bash "$SCRIPT_DIR/setup-statusline.sh" -f 2>&1 | grep -E '^\s+(SKIP|COPY|SET)\s' || true
