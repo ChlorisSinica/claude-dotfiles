@@ -45,6 +45,20 @@ plan.md, tasks.md must include:
 8. Risk + rollback plan
 9. Verification commands per task
 10. TODO list (phased, checkbox format, each task has its own DoD)
+11. **Discussion Points** — 設計判断の過程で確信を持てない技術的論点。
+    以下の2セクション構成:
+    
+    ### Discussion Points（未解決）
+    各論点は以下の形式で記述:
+    - 論点のタイトル
+    - 検討した選択肢（最低2つ）
+    - 各選択肢のトレードオフ
+    - 現時点での暫定判断とその理由
+    - 外部調査で解決可能かどうかの見立て
+    
+    ### Resolved（解決済み）
+    /sonnet-dp-research や議論で解決した論点をここに移動。
+    各論点に結論と根拠を記載。
 
 Rules:
 - Code snippets must be based on actual codebase (don't guess).
@@ -96,9 +110,8 @@ Rules:
 
 plan.md / tasks.md の作成完了後、ユーザーに以下を案内すること:
 
-> plan.md を確認し、修正が必要な箇所にインラインコメントを追加してください。
+> plan.md を確認してください。
+> Discussion Points がある場合は /sonnet-dp-research で外部調査できます。
+> 修正が必要な箇所にはインラインコメントを追加してください。
 > 書式: `[DELETE]`, `[CHANGE: 説明]`, `[ADD: 説明]`, `[QUESTION: 質問]`
-> 修正が完了したら、このチャットに戻ってください。
-
-ユーザーの Annotation Cycle（インラインコメントによる修正指示）が完了した後:
-- `/codex-plan-review` で Codex クロスレビューを実行
+> 完了したら /codex-plan-review でレビューに進んでください。

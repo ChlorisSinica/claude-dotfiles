@@ -21,7 +21,7 @@ done
 if [[ -z "$PRESET" ]]; then
     echo "ERROR: preset name required" >&2
     echo "Usage: bash ~/.claude/scripts/init-project.sh <preset> [-f]" >&2
-    echo "Presets: python, python-pytorch, typescript, rust, autohotkey-v1, autohotkey-v2, cpp-msvc" >&2
+    echo "Presets: python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc" >&2
     exit 1
 fi
 
@@ -146,6 +146,8 @@ echo ""
 echo "=== Done ==="
 echo ""
 echo "Next:"
-echo "  /research       → コードベース分析"
-echo "  /plan <機能>    → 設計"
-echo "  /implement      → 実装"
+echo "  /research                → コードベース分析"
+echo "  /plan <機能>             → 設計（Discussion Points を含む）"
+echo "  /sonnet-dp-research      → Discussion Points を外部調査（省略可）"
+echo "  /codex-plan-review       → Codex と設計議論"
+echo "  /implement               → 実装"

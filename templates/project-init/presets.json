@@ -27,14 +27,14 @@
     "FILE_PATTERNS": "**/*.rs",
     "EXCLUDE_DIRS": "target"
   },
-  "autohotkey-v1": {
+  "ahk": {
     "LANG": "AutoHotkey v1.1",
     "VERIFY_CMD": "\"C:\\Program Files\\AutoHotkey\\AutoHotkey.exe\" /ErrorStdOut main.ahk",
     "LANG_RULES": "- **v2 syntax forbidden**: No `MsgBox(\"text\")`, no `:=` only assignments, no `Map()`/`Array()`.\n- **Commands use comma syntax**: `MsgBox, text` NOT `MsgBox(\"text\")`.\n- **Variable dereferencing**: `%var%` (legacy) and expression mode are both valid; follow existing file convention.\n- **String concatenation**: Use `.` (dot) operator.\n- **#Include rules**: No top-level labels + bare `return`, no top-level hotkey definitions in included files.\n- **Timers**: Use `SetTimer, % Func(\"Name\"), period` (not label timers).\n- **GUI**: Define variables via `Gui, Add` with `v` option, retrieve with `Gui, Submit`.\n- **Reference**: https://www.autohotkey.com/docs/v1/",
     "FILE_PATTERNS": "**/*.ahk",
     "EXCLUDE_DIRS": ""
   },
-  "autohotkey-v2": {
+  "ahk-v2": {
     "LANG": "AutoHotkey v2",
     "VERIFY_CMD": "& \"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" /ErrorStdOut main.ahk",
     "LANG_RULES": "- **v1 syntax forbidden**: No `MsgBox text`, no `If var = value`, no legacy commands.\n- **Commands are functions**: `MsgBox(\"text\")` NOT `MsgBox, text`.\n- **`:=` for ALL assignments**.\n- **NO `%var%`** (use direct variable reference).\n- **Globals**: Explicit `global` declaration required.\n- **Expressions**: All conditions use parentheses: `if (cond)`, `while (cond)`.\n- **Strings**: Prefer `\"double quotes\"`.\n- **Objects**: Use `Map()`/`Array()`.\n- **Reference**: https://www.autohotkey.com/docs/v2/",

@@ -38,7 +38,12 @@ cat .claude/context/_codex_input.tmp | codex review -
 
 ## 終了条件
 
-1. Codex が **APPROVED** を返した → サイクル終了
+1. Codex が **APPROVED** を返した → `.claude/agents/sessions.json` に記録してサイクル終了:
+   - sessions.json を読み込み、`reviews` キーがなければ `{"reviews": []}` で初期化する
+   - `reviews` 配列に追記:
+   ```json
+   {"kind": "plan-review", "cycle": <現在のサイクル番号>, "date": "<ISO8601>", "verdict": "APPROVED", "session_id": "<Codex session ID>"}
+   ```
 2. Codex が **DISCUSS** を返した → 議論内容をユーザーに提示し判断を仰ぐ。ユーザーが合意すれば plan を修正して再送信、問題なしと判断すれば終了
 3. Codex が **REVISE** を返した → 根本的な設計変更を検討。plan を修正して再送信
 4. **3サイクル到達** → ユーザーに状況報告し判断を仰ぐ
@@ -48,7 +53,13 @@ cat .claude/context/_codex_input.tmp | codex review -
 
 1. Codex の出力を受信し `.claude/context/codex_plan_tasks_review.md` に保存
 2. **ユーザーへサマリーを出力**（判定結果、主要な議論点・質問・懸念のリスト）
-3. DISCUSS の場合: Codex の質問・懸念をユーザーと議論し、方針を決定してから修正
+3. DISCUSS の場合:
+   a) Codex の質問・懸念をユーザーに提示
+   b) 懸念の中に「技術選定の根拠不足」「外部情報で解決可能な疑問」が含まれる場合:
+      → Codex の新論点を plan.md の Discussion Points（未解決）セクションに追記する
+      → 「/sonnet-dp-research で追加調査しますか？」をユーザーに提案
+   c) ユーザーの判断に従い、/sonnet-dp-research 実行 or 直接修正
+   d) 方針を決定してから修正
 4. REVISE の場合: 懸念箇所の影響を plan.md/tasks.md 全体で確認し、方針転換を反映
 5. 修正後、再送信
 

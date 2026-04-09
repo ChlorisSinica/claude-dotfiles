@@ -51,7 +51,12 @@ cat .claude/context/_codex_input.tmp | codex review -
    - **REVISE** → P0/P1 を自律修正し、再送信（手順4に戻る）
    - 判定行が見つからない場合 → CONDITIONAL として扱う
 
-9. APPROVED 取得後、`.claude/agents/sessions.json` の `last_impl_review` キーを更新
+9. APPROVED 取得後、`.claude/agents/sessions.json` に記録:
+   - sessions.json を読み込み、`reviews` キーがなければ `{"reviews": []}` で初期化する
+   - `reviews` 配列に追記:
+   ```json
+   {"kind": "impl-review", "cycle": <現在のサイクル番号>, "date": "<ISO8601>", "verdict": "APPROVED", "session_id": "<Codex session ID>"}
+   ```
 
 ## 終了条件
 

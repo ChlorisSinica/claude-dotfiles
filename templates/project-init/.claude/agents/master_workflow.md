@@ -8,15 +8,17 @@
 ## 全体フロー
 
 ```
-Phase 1:  /research                  ← research.md 作成（Claude が全ファイル分析）
-Phase 1b: /codex-research-review     ← Codex レビュー（1サイクルのみ）
-Phase 2:  /plan <機能の説明>          ← plan.md + tasks.md + snippets.md 作成（Claude が設計）
-Phase 3:  Annotation cycle           ← 人間がインラインコメントで修正指示
-Phase 4:  /codex-plan-review         ← Codex クロスレビュー（APPROVED まで繰り返し）
-Phase 5:  /implement                 ← 実装（全タスク自律ループ → Codex レビュー → コミット）
-Phase 6:  /codex-review              ← 最終の汎用レビュー（任意）
-Phase 7:  /handover                  ← セッション終了前
-Phase 8:  /retro                     ← 振り返り
+Phase 1:   /research                    ← research.md 作成（Claude が全ファイル分析）
+Phase 2a:  /plan <機能の説明>            ← plan.md + tasks.md + snippets.md 作成（Claude が設計）
+Phase 2b:  /sonnet-dp-research          ← Sonnet subagent が Discussion Points を外部調査
+Phase 2c:  Claude が plan を更新         ← 調査結果で Discussion Points を解決
+Phase 3:   Annotation cycle             ← 人間がインラインコメントで修正指示
+Phase 4:   /codex-plan-review           ← Codex クロスレビュー（APPROVED まで繰り返し）
+           ↳ DISCUSS + 新技術論点発生時 → /sonnet-dp-research 再実行（手動トリガー）
+Phase 5:   /implement                   ← 実装（全タスク自律ループ → Codex レビュー → コミット）
+Phase 6:   /codex:review               ← 汎用レビュー（codex-plugin-cc 直接使用、任意）
+Phase 7:   /handover                    ← セッション終了前
+Phase 8:   /retro                       ← 振り返り
 ```
 
 ---
@@ -55,6 +57,24 @@ research.md には以下を必ず含めること:
 - "Deeply" means reading function internals, not just signatures.
 - Do NOT fabricate bugs. If no bugs are found, say so explicitly.
 - **言語制約**: このプロジェクトは {{LANG}} です。他の言語のツールやコマンドを実行しないこと。検証が必要な場合は `{{VERIFY_CMD}}` を使用すること。
+
+---
+
+## 1b) sonnet-dp-research — Discussion Points の外部技術調査
+
+plan.md 作成後、Discussion Points が存在する場合に `/sonnet-dp-research` を実行する。
+
+### 目的
+- plan の技術的不確実性を外部知識で補強する
+- codex-plan-review に入る前に、根拠の薄い判断を減らす
+
+### タイミング
+- /plan 完了後、Annotation cycle の**前に**実行（直列。並行不可）
+- Discussion Points が存在しない場合はスキップ可
+
+### 出力
+- `.claude/context/sonnet-dp-research.md` — 各論点の調査結果
+- plan.md の更新 — 解決した論点は Resolved セクションへ移動
 
 ---
 
@@ -105,6 +125,15 @@ Rules:
 
 `/codex-plan-review` を使用。Codex から認証を得られるまでクロスレビューを繰り返す。
 snippets.md のコードは擬似コードとして扱い、構文の厳密性は検証しない。
+
+### DISCUSS 時の re-research
+
+codex-plan-review で DISCUSS が返り、新しい技術的論点が含まれる場合:
+1. Claude が Codex の新論点を plan.md の Discussion Points（未解決）に追記
+2. ユーザーにサマリーと共に「/sonnet-dp-research で追加調査しますか？」を提案
+3. ユーザー判断で /sonnet-dp-research 実行 → plan 更新 → review 再送信
+   または直接修正 → review 再送信
+※ 自動ループにはしない（トークン膨張防止）
 
 ---
 
