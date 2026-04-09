@@ -14,8 +14,9 @@ Phase 2a:  /plan <機能の説明>            ← plan.md + tasks.md 作成（Cl
 Phase 2b:  /sonnet-dp-research          ← Sonnet subagent が Discussion Points を外部調査
 Phase 2c:  Claude が plan を更新         ← 調査結果で Discussion Points を解決
 Phase 3:   Annotation cycle             ← 人間がインラインコメントで修正指示
-Phase 4:   /codex-plan-review           ← Codex クロスレビュー（APPROVED まで繰り返し）
+Phase 4a:  /codex-plan-review (Phase A)  ← アーキテクチャレビュー（max 2 cycles）
            ↳ DISCUSS + 新技術論点 → /sonnet-dp-research 再実行（手動）
+Phase 4b:  /codex-plan-review (Phase B)  ← 詳細レビュー（max 3 cycles、Phase A APPROVED 後に自動遷移）
 Phase 5:   /implement [タスク番号]       ← 実装（1タスクずつ）
 Phase 5b:  /codex-impl-review           ← タスクごとに Codex 厳格レビュー
 Phase 6:   /codex:review               ← 汎用レビュー（codex-plugin-cc 直接、任意）
@@ -40,7 +41,7 @@ Phase 8:   /retro                       ← 振り返り
 
 | コマンド | Phase | 説明 | 引数 |
 |---|---|---|---|
-| `/codex-plan-review` | 4 | plan.md/tasks.md の Codex クロスレビューサイクル | 機能名（省略可） |
+| `/codex-plan-review` | 4a→4b | plan.md/tasks.md の2段階 Codex クロスレビュー（Phase A: アーキテクチャ → Phase B: 詳細） | 機能名（省略可） |
 | `/codex-impl-review` | 5b | 実装の Codex 厳格レビュー | タスク説明, ファイルパス（省略可） |
 
 ### セッション管理コマンド
@@ -71,7 +72,7 @@ Phase 8:   /retro                       ← 振り返り
 | プレースホルダ | 用途 | 使用ファイル |
 |---|---|---|
 | `$ARGUMENTS` | コマンド引数（ユーザー入力） | 全 .claude/commands/*.md |
-| `$FEATURE` | 機能名・機能説明 | codex_plan_review.md |
+| `$FEATURE` | 機能名・機能説明 | codex_plan_arch_review.md, codex_plan_review.md |
 | `$TASK_DESCRIPTION` | タスクの説明 | codex_impl_review.md |
 | `$FILE_LIST` | 対象ファイルパス（カンマ区切り） | codex_impl_review.md |
 | `{{LANG}}` | 言語/フレームワーク名 | master_workflow.md, codex_impl_review.md |

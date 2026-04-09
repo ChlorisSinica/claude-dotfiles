@@ -13,8 +13,9 @@ Phase 2a:  /plan <機能の説明>            ← plan.md + tasks.md + snippets.
 Phase 2b:  /sonnet-dp-research          ← Sonnet subagent が Discussion Points を外部調査
 Phase 2c:  Claude が plan を更新         ← 調査結果で Discussion Points を解決
 Phase 3:   Annotation cycle             ← 人間がインラインコメントで修正指示
-Phase 4:   /codex-plan-review           ← Codex クロスレビュー（APPROVED まで繰り返し）
+Phase 4a:  /codex-plan-review (Phase A)  ← アーキテクチャレビュー（max 2 cycles）
            ↳ DISCUSS + 新技術論点発生時 → /sonnet-dp-research 再実行（手動トリガー）
+Phase 4b:  /codex-plan-review (Phase B)  ← 詳細レビュー（max 3 cycles、Phase A APPROVED 後に自動遷移）
 Phase 5:   /implement                   ← 実装（全タスク自律ループ → Codex レビュー → コミット）
 Phase 6:   /codex:review               ← 汎用レビュー（codex-plugin-cc 直接使用、任意）
 Phase 7:   /handover                    ← セッション終了前
@@ -121,14 +122,29 @@ Rules:
 
 ---
 
-## 4) Opus ↔ Codex のレビューサイクル
+## 4) Opus ↔ Codex の2段階レビューサイクル
 
-`/codex-plan-review` を使用。Codex から認証を得られるまでクロスレビューを繰り返す。
+`/codex-plan-review` を使用。2段階でクロスレビューを実施する。
 snippets.md のコードは擬似コードとして扱い、構文の厳密性は検証しない。
+
+### Phase A: アーキテクチャレビュー（max 2 cycles）
+
+- 設計前提・API実在性・代替案の検証に集中
+- 命名・表記・DoD などの詳細は一切扱わない
+- 出力: `.claude/context/codex_plan_arch_review.md`
+- APPROVED → Phase B に自動遷移
+- DISCUSS/REVISE → ユーザー判断
+
+### Phase B: 詳細レビュー（max 3 cycles）
+
+- 記述品質・整合性・DoD の検証に集中
+- 設計方針への異議は対象外（Phase A で検証済み）
+- 出力: `.claude/context/codex_plan_tasks_review.md`
+- APPROVED → sessions.json 記録して終了
 
 ### DISCUSS 時の re-research
 
-codex-plan-review で DISCUSS が返り、新しい技術的論点が含まれる場合:
+Phase A で DISCUSS が返り、新しい技術的論点が含まれる場合:
 1. Claude が Codex の新論点を plan.md の Discussion Points（未解決）に追記
 2. ユーザーにサマリーと共に「/sonnet-dp-research で追加調査しますか？」を提案
 3. ユーザー判断で /sonnet-dp-research 実行 → plan 更新 → review 再送信
