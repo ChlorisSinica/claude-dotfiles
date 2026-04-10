@@ -264,7 +264,7 @@ if __name__ == "__main__":
 '''
         write_if_new(hook_path, hook_content, 'hooks/syntax-check.py')
 
-    # --- CLAUDE.md (dev template only) ---
+    # --- CLAUDE.md (dev template) ---
     claude_md_path = os.path.join(dest_dir, 'CLAUDE.md')
     claude_md = f"""# {lang} Project
 
@@ -282,17 +282,68 @@ if __name__ == "__main__":
 """
     write_if_new(claude_md_path, claude_md, 'CLAUDE.md')
 
-# --- settings.local.json (both templates) ---
+# --- CLAUDE.md (research template) ---
+if is_research:
+    domain = p.get('DOMAIN', preset_name)
+    survey_rules = p.get('SURVEY_RULES', '')
+    key_venues = p.get('KEY_VENUES', '')
+    claude_md_path = os.path.join(dest_dir, 'CLAUDE.md')
+    claude_md = f"""# Research Survey — {domain}
+
+## Domain
+
+{domain}
+
+## Key Venues
+
+{key_venues}
+
+## Survey Methodology Rules
+
+{survey_rules}
+
+## Tools
+
+推奨 CLI ツール（全てオプション）:
+- `pip install paper-qa>=5 arxiv-dl marker-pdf semanticscholar bibcure`
+- Pandoc: `winget install --id JohnMacFarlane.Pandoc`
+
+ツール検出: `/check-tools`
+
+## Workflow
+
+`/scope` → `/search` → `/read` → `/outline` → `/draft` → `/review` → `/convert`
+"""
+    write_if_new(claude_md_path, claude_md, 'CLAUDE.md')
+
+# --- settings.local.json (both templates, different permissions) ---
 local_path = os.path.join(dest_dir, 'settings.local.json')
-local_obj = {
-    "permissions": {
-        "allow": [
-            "Bash(git *)",
-            "Bash(codex review:*)",
-            "Bash(powershell *)"
-        ]
+if is_research:
+    local_obj = {
+        "permissions": {
+            "allow": [
+                "Bash(git *)",
+                "Bash(pqa *)",
+                "Bash(paper *)",
+                "Bash(marker_single *)",
+                "Bash(bibcure *)",
+                "Bash(pandoc *)",
+                "Bash(python -c *)",
+                "Bash(python3 -c *)",
+                "Bash(powershell *)"
+            ]
+        }
     }
-}
+else:
+    local_obj = {
+        "permissions": {
+            "allow": [
+                "Bash(git *)",
+                "Bash(codex review:*)",
+                "Bash(powershell *)"
+            ]
+        }
+    }
 write_if_new(local_path, json.dumps(local_obj, indent=2, ensure_ascii=False) + '\n', 'settings.local.json')
 PYEOF2
 
