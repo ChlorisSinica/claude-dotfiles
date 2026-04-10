@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # init-project.sh
-# Usage: bash ~/.claude/scripts/init-project.sh <preset> [-f]
+# Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f]
 #
 # Copies .claude/ templates into the current directory and substitutes
-# {{LANG}}, {{VERIFY_CMD}}, {{LANG_RULES}} placeholders.
+# placeholders from presets.json.
 # Existing files are NOT overwritten unless -f is specified.
 
 set -euo pipefail
@@ -119,51 +119,182 @@ for root, dirs, files in os.walk(template_dir):
         print(f"  {action}  {rel}")
 PYEOF
 
-# settings.json (skip if exists)
-SETTINGS="$DEST_DIR/settings.json"
-if [[ ! -f "$SETTINGS" ]]; then
-    mkdir -p "$DEST_DIR"
-    if [[ "$TEMPLATE" == "research-survey" ]]; then
-        DOMAIN_VAL=$("$PYTHON" -c "import json; p=json.load(open('$(to_win "$PRESET_FILE")')); print(p['$PRESET']['DOMAIN'])" 2>/dev/null || echo "$PRESET")
-        cat > "$SETTINGS" << EOF
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 'Reminder: This is a research survey project. Domain: ${DOMAIN_VAL}. Use /scope to begin.'"
-          }
+# Generate settings.json, CLAUDE.md, settings.local.json, and syntax-check hook via Python
+"$PYTHON" - "$PRESET" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$TEMPLATE" <<'PYEOF2'
+import sys, json, os
+
+preset_name, dest_dir, preset_file, force_str, template = sys.argv[1:6]
+force = force_str == "true"
+
+with open(preset_file, encoding='utf-8') as f:
+    presets = json.load(f)
+p = presets[preset_name]
+
+is_research = template == "research-survey"
+
+def write_if_new(path, content, label):
+    if os.path.exists(path) and not force:
+        print(f"  SKIP  {label}")
+        return False
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(content)
+    print(f"  CREATE {label}")
+    return True
+
+# --- settings.json ---
+settings_path = os.path.join(dest_dir, 'settings.json')
+
+if is_research:
+    # Research template: simple SessionStart reminder
+    domain = p.get('DOMAIN', preset_name)
+    if not os.path.exists(settings_path) or force:
+        settings_obj = {
+            "hooks": {
+                "SessionStart": [
+                    {
+                        "matcher": "compact",
+                        "hooks": [{
+                            "type": "command",
+                            "command": f"echo 'Reminder: This is a research survey project. Domain: {domain}. Use /scope to begin.'"
+                        }]
+                    }
+                ]
+            }
+        }
+        write_if_new(settings_path, json.dumps(settings_obj, indent=2, ensure_ascii=False) + '\n', 'settings.json')
+    else:
+        print("  SKIP  settings.json")
+else:
+    # Development template: SessionStart + optional PostToolUse syntax check
+    lang = p.get('LANG', preset_name)
+    verify_cmd = p.get('VERIFY_CMD', '')
+    lang_rules = p.get('LANG_RULES', '')
+    syntax_cmd = p.get('SYNTAX_CHECK_CMD', '')
+    syntax_enabled = p.get('SYNTAX_CHECK_ENABLED', False)
+    file_patterns = p.get('FILE_PATTERNS', '')
+
+    # Derive file extensions from FILE_PATTERNS (e.g. "**/*.py" -> [".py"])
+    exts = []
+    for pat in file_patterns.split(','):
+        pat = pat.strip()
+        if '*.' in pat:
+            exts.append('.' + pat.split('*.')[-1])
+
+    if os.path.exists(settings_path):
+        # Backfill: add PostToolUse to existing settings.json if missing
+        with open(settings_path, encoding='utf-8') as f:
+            settings_obj = json.load(f)
+        hooks = settings_obj.setdefault('hooks', {})
+        if syntax_enabled and syntax_cmd and 'PostToolUse' not in hooks:
+            hooks['PostToolUse'] = [
+                {
+                    "matcher": "Edit|Write",
+                    "hooks": [{
+                        "type": "command",
+                        "command": "python .claude/hooks/syntax-check.py",
+                        "timeout": 15,
+                        "statusMessage": "Syntax check..."
+                    }]
+                }
+            ]
+            with open(settings_path, 'w', encoding='utf-8', newline='\n') as f:
+                json.dump(settings_obj, f, indent=2, ensure_ascii=False)
+                f.write('\n')
+            print("  UPDATE settings.json (added PostToolUse)")
+        else:
+            print("  SKIP  settings.json")
+    else:
+        # New settings.json
+        settings_obj = {
+            "hooks": {
+                "SessionStart": [
+                    {
+                        "matcher": "compact",
+                        "hooks": [{
+                            "type": "command",
+                            "command": f"echo 'Reminder: This project uses {lang}. Do not mix syntax versions.'"
+                        }]
+                    }
+                ]
+            }
+        }
+        if syntax_enabled and syntax_cmd:
+            settings_obj["hooks"]["PostToolUse"] = [
+                {
+                    "matcher": "Edit|Write",
+                    "hooks": [{
+                        "type": "command",
+                        "command": "python .claude/hooks/syntax-check.py",
+                        "timeout": 15,
+                        "statusMessage": "Syntax check..."
+                    }]
+                }
+            ]
+        write_if_new(settings_path, json.dumps(settings_obj, indent=2, ensure_ascii=False) + '\n', 'settings.json')
+
+    # --- hooks/syntax-check.py (dev template only) ---
+    if syntax_enabled and syntax_cmd:
+        hook_path = os.path.join(dest_dir, 'hooks', 'syntax-check.py')
+        ext_list = repr(exts)
+        hook_content = f'''#!/usr/bin/env python3
+"""PostToolUse hook: syntax check for {lang} files."""
+import json, sys, os, subprocess
+
+EXTENSIONS = {ext_list}
+SYNTAX_CMD = {repr(syntax_cmd)}
+
+def main():
+    data = json.load(sys.stdin)
+    file_path = data.get("tool_input", {{}}).get("file_path", "")
+    if not file_path:
+        return
+    _, ext = os.path.splitext(file_path)
+    if ext.lower() not in EXTENSIONS:
+        return
+    cmd = SYNTAX_CMD.replace("$FILE", file_path)
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        output = (result.stderr or result.stdout).strip()
+        print(output, file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+'''
+        write_if_new(hook_path, hook_content, 'hooks/syntax-check.py')
+
+    # --- CLAUDE.md (dev template only) ---
+    claude_md_path = os.path.join(dest_dir, 'CLAUDE.md')
+    claude_md = f"""# {lang} Project
+
+## Language
+
+{lang}。構文バージョンを混同しないこと。
+
+## Coding Rules
+
+{lang_rules}
+
+## Testing
+
+検証コマンド: `{verify_cmd}`
+"""
+    write_if_new(claude_md_path, claude_md, 'CLAUDE.md')
+
+# --- settings.local.json (both templates) ---
+local_path = os.path.join(dest_dir, 'settings.local.json')
+local_obj = {
+    "permissions": {
+        "allow": [
+            "Bash(git *)",
+            "Bash(codex review:*)",
+            "Bash(powershell *)"
         ]
-      }
-    ]
-  }
+    }
 }
-EOF
-    else
-        LANG_VAL=$("$PYTHON" -c "import json; p=json.load(open('$(to_win "$PRESET_FILE")')); print(p['$PRESET']['LANG'])" 2>/dev/null || echo "$PRESET")
-        cat > "$SETTINGS" << EOF
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 'Reminder: This project uses ${LANG_VAL}. Do not mix syntax versions.'"
-          }
-        ]
-      }
-    ]
-  }
-}
-EOF
-    fi
-    echo "  CREATE settings.json"
-fi
+write_if_new(local_path, json.dumps(local_obj, indent=2, ensure_ascii=False) + '\n', 'settings.local.json')
+PYEOF2
 
 # .gitignore
 GITIGNORE="$(pwd)/.gitignore"
