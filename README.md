@@ -14,6 +14,7 @@ bash ~/claude-dotfiles/setup.sh
 `~/.claude/` に以下がインストールされます:
 
 - `commands/init-project.md` — `/init-project` グローバルコマンド
+- `commands/update-skills.md` — 既存プロジェクトの workflow skills 更新コマンド
 - `templates/project-init/` — 開発プロジェクト初期化テンプレート
 - `templates/research-survey/` — 研究サーベイ用テンプレート
 - `scripts/init-project.sh` — テンプレート展開スクリプト（`/init-project` から呼び出し）
@@ -27,6 +28,15 @@ git pull
 bash setup.sh       # 新規ファイルのみコピー
 bash setup.sh -f    # 全ファイル上書き（既存を更新したい場合）
 ```
+
+既存プロジェクトの `.claude/context` を保持したまま workflow skills だけ更新したい場合:
+
+```bash
+bash ~/.claude/scripts/init-project.sh -t project-init <preset> --skills-only -f
+```
+
+`--skills-only -f` は `.claude/commands/` と `.claude/agents/` を上書き更新し、`.claude/context/`、`CLAUDE.md`、`settings.json`、`settings.local.json`、`.gitignore`、`agents/sessions.json` は保持します。
+Claude Code 上では `/update-skills <preset>` を使って同じ操作を呼べます。
 
 ## codex-plugin-cc のインストール（推奨）
 
@@ -47,6 +57,12 @@ Codex CLI が未インストールの場合は `/codex:setup` が自動インス
 
 ```
 /init-project python-pytorch
+```
+
+既存プロジェクトで skills だけ更新する場合:
+
+```
+/update-skills python-pytorch
 ```
 
 ### 開発プリセット
