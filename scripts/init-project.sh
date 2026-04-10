@@ -10,23 +10,36 @@ set -euo pipefail
 
 PRESET=""
 FORCE=false
+TEMPLATE="project-init"
 
 for arg in "$@"; do
     case "$arg" in
         -f) FORCE=true ;;
-        *)  PRESET="$arg" ;;
+        -t) :;;  # value consumed below
+        *)
+            # If previous arg was -t, this is the template name
+            if [[ "${PREV_ARG:-}" == "-t" ]]; then
+                TEMPLATE="$arg"
+            else
+                PRESET="$arg"
+            fi
+            ;;
     esac
+    PREV_ARG="$arg"
 done
 
 if [[ -z "$PRESET" ]]; then
     echo "ERROR: preset name required" >&2
-    echo "Usage: bash ~/.claude/scripts/init-project.sh <preset> [-f]" >&2
-    echo "Presets: python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc" >&2
+    echo "Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f]" >&2
+    echo "" >&2
+    echo "Templates: project-init (default), research-survey" >&2
+    echo "Presets (project-init): python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc" >&2
+    echo "Presets (research-survey): survey-cv, survey-ms" >&2
     exit 1
 fi
 
-TEMPLATE_DIR="${HOME}/.claude/templates/project-init/.claude"
-PRESET_FILE="${HOME}/.claude/templates/project-init/presets.json"
+TEMPLATE_DIR="${HOME}/.claude/templates/${TEMPLATE}/.claude"
+PRESET_FILE="${HOME}/.claude/templates/${TEMPLATE}/presets.json"
 DEST_DIR="$(pwd)/.claude"
 
 if [[ ! -d "$TEMPLATE_DIR" ]]; then
@@ -76,9 +89,8 @@ if preset_name not in presets:
 p = presets[preset_name]
 
 def substitute(content):
-    content = content.replace('{{LANG}}',       p.get('LANG', ''))
-    content = content.replace('{{VERIFY_CMD}}', p.get('VERIFY_CMD', ''))
-    content = content.replace('{{LANG_RULES}}', p.get('LANG_RULES', ''))
+    for key, value in p.items():
+        content = content.replace('{{' + key + '}}', str(value))
     return content
 
 for root, dirs, files in os.walk(template_dir):
@@ -110,9 +122,29 @@ PYEOF
 # settings.json (skip if exists)
 SETTINGS="$DEST_DIR/settings.json"
 if [[ ! -f "$SETTINGS" ]]; then
-    LANG_VAL=$("$PYTHON" -c "import json; p=json.load(open('$(to_win "$PRESET_FILE")')); print(p['$PRESET']['LANG'])" 2>/dev/null || echo "$PRESET")
     mkdir -p "$DEST_DIR"
-    cat > "$SETTINGS" << EOF
+    if [[ "$TEMPLATE" == "research-survey" ]]; then
+        DOMAIN_VAL=$("$PYTHON" -c "import json; p=json.load(open('$(to_win "$PRESET_FILE")')); print(p['$PRESET']['DOMAIN'])" 2>/dev/null || echo "$PRESET")
+        cat > "$SETTINGS" << EOF
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Reminder: This is a research survey project. Domain: ${DOMAIN_VAL}. Use /scope to begin.'"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+    else
+        LANG_VAL=$("$PYTHON" -c "import json; p=json.load(open('$(to_win "$PRESET_FILE")')); print(p['$PRESET']['LANG'])" 2>/dev/null || echo "$PRESET")
+        cat > "$SETTINGS" << EOF
 {
   "hooks": {
     "SessionStart": [
@@ -129,6 +161,7 @@ if [[ ! -f "$SETTINGS" ]]; then
   }
 }
 EOF
+    fi
     echo "  CREATE settings.json"
 fi
 
@@ -146,8 +179,18 @@ echo ""
 echo "=== Done ==="
 echo ""
 echo "Next:"
-echo "  /research                → コードベース分析"
-echo "  /plan <機能>             → 設計（Discussion Points を含む）"
-echo "  /sonnet-dp-research      → Discussion Points を外部調査（省略可）"
-echo "  /codex-plan-review       → Codex と設計議論"
-echo "  /implement               → 実装"
+if [[ "$TEMPLATE" == "research-survey" ]]; then
+    echo "  /scope <topic>           → 研究スコープ定義"
+    echo "  /search                  → 文献検索"
+    echo "  /read                    → 論文分析"
+    echo "  /outline                 → サーベイ構成案"
+    echo "  /draft                   → 執筆"
+    echo "  /review                  → 品質レビュー"
+    echo "  /convert                 → Markdown → LaTeX 変換"
+else
+    echo "  /research                → コードベース分析"
+    echo "  /plan <機能>             → 設計（Discussion Points を含む）"
+    echo "  /sonnet-dp-research      → Discussion Points を外部調査（省略可）"
+    echo "  /codex-plan-review       → Codex と設計議論"
+    echo "  /implement               → 実装"
+fi

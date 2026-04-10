@@ -14,8 +14,10 @@ bash ~/claude-dotfiles/setup.sh
 `~/.claude/` に以下がインストールされます:
 
 - `commands/init-project.md` — `/init-project` グローバルコマンド
-- `templates/project-init/` — プロジェクト初期化テンプレート
+- `templates/project-init/` — 開発プロジェクト初期化テンプレート
+- `templates/research-survey/` — 研究サーベイ用テンプレート
 - `scripts/init-project.sh` — テンプレート展開スクリプト（`/init-project` から呼び出し）
+- `scripts/survey-convert.sh` — Markdown → LaTeX 変換スクリプト
 
 ## 更新
 
@@ -47,7 +49,19 @@ Codex CLI が未インストールの場合は `/codex:setup` が自動インス
 /init-project python-pytorch
 ```
 
-プリセット: `python`, `python-pytorch`, `typescript`, `rust`, `ahk`, `ahk-v2`, `cpp-msvc`
+### 開発プリセット
+
+`python`, `python-pytorch`, `typescript`, `rust`, `ahk`, `ahk-v2`, `cpp-msvc`
+
+### 研究サーベイプリセット
+
+```
+/init-project survey-cv
+/init-project survey-ms
+```
+
+- `survey-cv` — Computer Vision（CVPR, ICCV, ECCV 等）
+- `survey-ms` — Materials Science（Acta Materialia, Computational Materials Science 等）
 
 ## ステータスライン
 
@@ -72,6 +86,8 @@ bash ~/claude-dotfiles/setup-statusline.sh -f     # 上書き更新
 
 ## ワークフロー
 
+### 開発ワークフロー
+
 ```
 /init-project → /research
              → /plan → /sonnet-dp-research（省略可）→ /codex-plan-review
@@ -79,3 +95,13 @@ bash ~/claude-dotfiles/setup-statusline.sh -f     # 上書き更新
 ```
 
 **前提**: Codex CLI (`npm install -g @openai/codex`) が必要です。codex-plugin-cc は `/codex:review`（汎用レビュー）を使う場合に推奨です。
+
+### 研究サーベイワークフロー
+
+```
+/init-project survey-cv → /scope <topic>
+                        → /search → /read → /outline
+                        → /draft → /review → /convert
+```
+
+**前提**: `/convert` には Pandoc が必要です（`winget install --id JohnMacFarlane.Pandoc`）。
