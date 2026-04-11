@@ -4,8 +4,8 @@ description: "既存プロジェクトの workflow files を更新し、.claude/
 
 # Update Workflow — 既存プロジェクトの workflow files 更新
 
-既存プロジェクトの `.claude/commands/` と `.claude/agents/` を更新してください。
-`.claude/context/` や project-specific settings は保持します。
+既存プロジェクトの workflow-managed files を更新してください。
+`.claude/context/` と runtime state は保持します。
 
 ## 入力
 
@@ -34,11 +34,11 @@ description: "既存プロジェクトの workflow files を更新し、.claude/
    ```
 
 3. **完了報告**:
-   スクリプトの出力をそのまま表示し、`.claude/context` を保持したまま workflow files を更新したことを伝える。
+   スクリプトの出力をそのまま表示し、`.claude/context/` と `.claude/agents/sessions.json` を保持したまま workflow files を更新したことを伝える。
 
 ## 注意
 
 - スクリプトが `Template not found` で失敗した場合は `bash ~/claude-dotfiles/setup.sh -f` を実行するよう案内
 - 不明なプリセット名はスクリプトがエラーを出力するので、そのまま報告する
-- `--workflow-only -f` は `.claude/commands/` と `.claude/agents/` のみ更新し、`.claude/context/`、`CLAUDE.md`、`settings.json`、`settings.local.json`、`.gitignore`、`agents/sessions.json` は保持する
+- `--workflow-only -f` は `.claude/context/` と `.claude/agents/sessions.json` を保持しつつ、template-managed files と generated workflow files（`.claude/CLAUDE.md`、`.claude/settings.json`、`.claude/settings.local.json`、`.claude/hooks/syntax-check.py`、`.gitignore` を含む）を更新する
 - `/update-skills` は互換 alias として残っているが、今後は `/update-workflow` を優先する
