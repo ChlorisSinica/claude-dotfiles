@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # init-project.sh
-# Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f] [--skills-only]
+# Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f] [--workflow-only]
 #
 # Copies .claude/ templates into the current directory and substitutes
 # placeholders from presets.json.
 # Existing files are NOT overwritten unless -f is specified.
-# Use --skills-only to update only reusable workflow files under
+# Use --workflow-only to update only reusable workflow files under
 # .claude/commands/ and .claude/agents/ while preserving project context.
 
 set -euo pipefail
@@ -13,12 +13,12 @@ set -euo pipefail
 PRESET=""
 FORCE=false
 TEMPLATE="project-init"
-SKILLS_ONLY=false
+WORKFLOW_ONLY=false
 
 for arg in "$@"; do
     case "$arg" in
         -f) FORCE=true ;;
-        --skills-only) SKILLS_ONLY=true ;;
+        --workflow-only|--skills-only) WORKFLOW_ONLY=true ;;
         -t) :;;  # value consumed below
         *)
             # If previous arg was -t, this is the template name
@@ -34,7 +34,7 @@ done
 
 if [[ -z "$PRESET" ]]; then
     echo "ERROR: preset name required" >&2
-    echo "Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f] [--skills-only]" >&2
+    echo "Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f] [--workflow-only]" >&2
     echo "" >&2
     echo "Templates: project-init (default), research-survey" >&2
     echo "Presets (project-init): python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc" >&2
@@ -76,12 +76,12 @@ else
     echo "ERROR: Python not found. Install Python 3 to use this script." >&2
     exit 1
 fi
-"$PYTHON" - "$PRESET" "$TEMPLATE_DIR_PY" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$SKILLS_ONLY" <<'PYEOF'
+"$PYTHON" - "$PRESET" "$TEMPLATE_DIR_PY" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$WORKFLOW_ONLY" <<'PYEOF'
 import sys, json, os
 
-preset_name, template_dir, dest_dir, preset_file, force_str, skills_only_str = sys.argv[1:7]
+preset_name, template_dir, dest_dir, preset_file, force_str, workflow_only_str = sys.argv[1:7]
 force = force_str == "true"
-skills_only = skills_only_str == "true"
+workflow_only = workflow_only_str == "true"
 
 with open(preset_file, encoding='utf-8') as f:
     presets = json.load(f)
@@ -104,11 +104,11 @@ for root, dirs, files in os.walk(template_dir):
         rel = os.path.relpath(src, template_dir).replace('\\', '/')
         dst = os.path.join(dest_dir, rel)
 
-        if skills_only:
-            is_skill_file = rel.startswith('commands/') or rel.startswith('agents/')
+        if workflow_only:
+            is_workflow_file = rel.startswith('commands/') or rel.startswith('agents/')
             is_runtime_state = rel == 'agents/sessions.json'
-            if not is_skill_file or is_runtime_state:
-                print(f"  SKIP  {rel} (skills-only)")
+            if not is_workflow_file or is_runtime_state:
+                print(f"  SKIP  {rel} (workflow-only)")
                 continue
 
         if os.path.exists(dst) and not force:
@@ -132,8 +132,8 @@ for root, dirs, files in os.walk(template_dir):
 PYEOF
 
 # Generate settings.json, CLAUDE.md, settings.local.json, and syntax-check hook via Python
-if [[ "$SKILLS_ONLY" == "true" ]]; then
-    echo "  SKIP  generated project files (skills-only)"
+if [[ "$WORKFLOW_ONLY" == "true" ]]; then
+    echo "  SKIP  generated project files (workflow-only)"
 else
 "$PYTHON" - "$PRESET" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$TEMPLATE" <<'PYEOF2'
 import sys, json, os
@@ -364,8 +364,8 @@ PYEOF2
 fi
 
 # .gitignore
-if [[ "$SKILLS_ONLY" == "true" ]]; then
-    echo "  SKIP  .gitignore (skills-only)"
+if [[ "$WORKFLOW_ONLY" == "true" ]]; then
+    echo "  SKIP  .gitignore (workflow-only)"
 else
     GITIGNORE="$(pwd)/.gitignore"
     touch "$GITIGNORE"
