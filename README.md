@@ -136,3 +136,74 @@ bash ~/claude-dotfiles/setup-statusline.sh -f     # 上書き更新
 ```
 
 **前提**: `/convert` には Pandoc が必要です（`winget install --id JohnMacFarlane.Pandoc`）。
+
+## 自動承認（Auto-Approve）
+
+ワークフローの自律ループ中にツール承認が大量発生するのを防ぐため、`settings.local.json`（git-ignored）で自動承認を設定できます。
+
+`/init-project` 実行時に `settings.local.json.bak` として生成されます（**デフォルト OFF**）。
+
+### 自動承認の ON/OFF 切り替え
+
+対象プロジェクトのルートディレクトリで実行:
+
+```bash
+cd /path/to/your/project
+
+# ON — 自動承認を有効化（初回）
+mv .claude/settings.local.json.bak .claude/settings.local.json
+
+# OFF — 全ツールを毎回手動承認に戻す
+mv .claude/settings.local.json .claude/settings.local.json.bak
+```
+
+### 開発ワークフローで承認が必要なツール
+
+| コマンド | ツール | 発生回数 |
+|---------|--------|---------|
+| `/codex-plan-review` | `Bash(cat ... \| codex review -)` | Phase A 最大2回 + Phase B 最大3回 |
+| `/codex-impl-review` | `Bash(cat ... \| codex review -)` | 最大5サイクル |
+| `/sonnet-dp-research` | `WebSearch`, `WebFetch` | Discussion Point 数×複数回 |
+| `/implement` | `Bash({{VERIFY_CMD}})`, `Edit`, `Write` | タスク数×毎回 |
+| `/implement` (完了後) | `Bash(git add/commit)` | 1回 |
+
+自動承認を有効にする場合、`settings.local.json` に以下を追加:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(codex review:*)",
+      "Bash(cat .claude/context/*)",
+      "Bash(powershell:*)",
+      "WebSearch",
+      "WebFetch"
+    ]
+  }
+}
+```
+
+> **注意**:
+> - `Bash(git *)` や `Bash(*)` は `git push` も自動承認されるため使用しないこと
+> - `git push` は手動承認を維持する
+> - 上記は共通部分のみ。検証コマンド（`python -m pytest`, `cargo test` 等）のパターンは `/init-project` 時に `settings.local.json.bak` へ自動生成される
+
+### 研究サーベイワークフローで承認が必要なツール
+
+| コマンド | ツール | 発生回数 |
+|---------|--------|---------|
+| `/search` | `WebSearch` | 検索クエリ数×複数回 |
+| `/read` | `WebFetch`, `Bash(pqa/paper/marker_single)` | 論文数×毎回 |
+| `/review` | `Bash(python -c ... semanticscholar)`, `WebSearch` | 引用数×毎回 |
+| `/convert` | `Bash(pandoc/bibcure)` | 1回 |
+
+研究テンプレートでは `/init-project` 時に `settings.local.json.bak` として生成されます（デフォルト OFF）。ON にすると以下が自動承認されます:
+
+- `WebSearch` — 全検索クエリ
+- `WebFetch` — arxiv.org, semanticscholar.org, scholar.google.com, openreview.net, aclanthology.org, papers.nips.cc, openaccess.thecvf.com, doi.org
+- `Bash` — git, pqa, paper, marker_single, bibcure, pandoc, python -c

@@ -331,35 +331,115 @@ if is_research:
 """
     write_if_new(claude_md_path, claude_md, 'CLAUDE.md')
 
-# --- settings.local.json (both templates, different permissions) ---
-local_path = os.path.join(dest_dir, 'settings.local.json')
+# --- settings.local.json.bak (auto-approve OFF by default) ---
+# Generated as .bak so auto-approve is disabled by default.
+# User enables with: mv .claude/settings.local.json.bak .claude/settings.local.json
+# If .json already exists (user enabled auto-approve), also update it on -f.
+local_path = os.path.join(dest_dir, 'settings.local.json.bak')
+local_active = os.path.join(dest_dir, 'settings.local.json')
 if is_research:
     local_obj = {
         "permissions": {
             "allow": [
-                "Bash(git *)",
-                "Bash(pqa *)",
-                "Bash(paper *)",
-                "Bash(marker_single *)",
-                "Bash(bibcure *)",
-                "Bash(pandoc *)",
-                "Bash(python -c *)",
-                "Bash(python3 -c *)",
-                "Bash(powershell *)"
+                "Bash(git status:*)",
+                "Bash(git diff:*)",
+                "Bash(git log:*)",
+                "Bash(git add:*)",
+                "Bash(git commit:*)",
+                "Bash(pqa:*)",
+                "Bash(paper:*)",
+                "Bash(marker_single:*)",
+                "Bash(bibcure:*)",
+                "Bash(pandoc:*)",
+                "Bash(bash ~/.claude/scripts/survey-convert.sh:*)",
+                "Bash(python -c:*)",
+                "Bash(python3 -c:*)",
+                "WebSearch",
+                "WebFetch(domain:arxiv.org)",
+                "WebFetch(domain:semanticscholar.org)",
+                "WebFetch(domain:scholar.google.com)",
+                "WebFetch(domain:openreview.net)",
+                "WebFetch(domain:aclanthology.org)",
+                "WebFetch(domain:papers.nips.cc)",
+                "WebFetch(domain:openaccess.thecvf.com)",
+                "WebFetch(domain:doi.org)"
             ]
         }
     }
 else:
+    # Build verify command prefixes for auto-approve.
+    # Uses Bash(prefix:*) colon-wildcard syntax (repo convention).
+    # Extracts a meaningful prefix (not just first token) to avoid overly broad permissions.
+    # e.g. "python -m pytest --tb=short -q" -> "Bash(python -m pytest:*)"
+    # e.g. "cargo check && cargo test"       -> "Bash(cargo check:*)", "Bash(cargo test:*)"
+    # e.g. '"C:\...\AutoHotkey.exe" /ErrorStdOut ...' -> 'Bash("C:\...\AutoHotkey.exe":*)'
+    verify_prefixes = set()
+    raw_verify = p.get('VERIFY_CMD', '')
+    for part in raw_verify.split('&&'):
+        part = part.strip()
+        if not part:
+            continue
+        if part.startswith('"'):
+            # Quoted exe path: use up to closing quote
+            end = part.find('"', 1)
+            if end > 0:
+                verify_prefixes.add(f'Bash({part[:end+1]}:*)')
+        elif part.startswith('& '):
+            # PowerShell call operator: & "path" ... — preserve & prefix
+            inner = part[2:].strip()
+            if inner.startswith('"'):
+                end = inner.find('"', 1)
+                if end > 0:
+                    verify_prefixes.add(f'Bash(& {inner[:end+1]}:*)')
+        else:
+            # Unquoted: use first 2-3 meaningful tokens as prefix
+            # "python -m pytest --tb=short -q" -> "python -m pytest"
+            # "npx tsc --noEmit" -> "npx tsc"
+            # "npm test" -> "npm test"
+            # "msbuild /m ..." -> "msbuild"
+            tokens = part.split()
+            # Take tokens until we hit a flag (starts with - or /)
+            # Exception: -m (module) and -c (command) are kept as part of prefix
+            # to produce "python -m pytest:*" or "python -c:*" instead of "python:*"
+            KEEP_FLAGS = {'-m', '-c'}
+            prefix_tokens = []
+            for t in tokens:
+                if (t.startswith('-') or t.startswith('/')) and t not in KEEP_FLAGS:
+                    break
+                prefix_tokens.append(t)
+                # After -c, take the next token too if it's a quoted string (but stop there)
+                if t == '-c':
+                    break
+            prefix = ' '.join(prefix_tokens) if prefix_tokens else tokens[0]
+            verify_prefixes.add(f'Bash({prefix}:*)')
+
+    dev_allow = [
+        "Bash(git status:*)",
+        "Bash(git diff:*)",
+        "Bash(git log:*)",
+        "Bash(git add:*)",
+        "Bash(git commit:*)",
+        "Bash(codex review:*)",
+        "Bash(cat .claude/context/*)",
+        "WebSearch",
+        "WebFetch"
+    ]
+    # Add verify command prefixes
+    for vp in sorted(verify_prefixes):
+        if vp not in dev_allow:
+            dev_allow.append(vp)
+
     local_obj = {
         "permissions": {
-            "allow": [
-                "Bash(git *)",
-                "Bash(codex review:*)",
-                "Bash(powershell *)"
-            ]
+            "allow": dev_allow
         }
     }
-write_if_new(local_path, json.dumps(local_obj, indent=2, ensure_ascii=False) + '\n', 'settings.local.json')
+write_if_new(local_path, json.dumps(local_obj, indent=2, ensure_ascii=False) + '\n', 'settings.local.json.bak')
+# If user already enabled auto-approve (.json exists), update it too on -f
+if force and os.path.exists(local_active):
+    with open(local_active, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(json.dumps(local_obj, indent=2, ensure_ascii=False) + '\n')
+    print("  UPDATE settings.local.json (synced with .bak)")
 PYEOF2
 fi
 

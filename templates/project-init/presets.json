@@ -4,6 +4,7 @@
     "VERIFY_CMD": "python -m pytest --tb=short -q",
     "SYNTAX_CHECK_CMD": "python -m py_compile \"$FILE\"",
     "SYNTAX_CHECK_ENABLED": true,
+    "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **Type hints**: Use type hints for function signatures.\n- **Imports**: Follow PEP 8 import ordering (stdlib, third-party, local).\n- **f-strings**: Prefer f-strings over .format() or % formatting.\n- **Context managers**: Use `with` for file/resource handling.\n- **Exception handling**: Catch specific exceptions, never bare `except:`.\n- **Docstrings**: Follow Google or NumPy style.\n- **Reference**: https://peps.python.org/pep-0008/",
     "FILE_PATTERNS": "**/*.py",
     "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build"
@@ -13,6 +14,7 @@
     "VERIFY_CMD": "python -m pytest --tb=short -q && python -c \"import torch; print(f'PyTorch {torch.__version__} OK')\"",
     "SYNTAX_CHECK_CMD": "python -m py_compile \"$FILE\"",
     "SYNTAX_CHECK_ENABLED": true,
+    "LOG_PATTERNS": "**/*.log,**/*.status,logs/**,wandb/**/*.log,runs/**/*.log",
     "LANG_RULES": "- **Type hints**: Use type hints for function signatures.\n- **Imports**: Follow PEP 8 import ordering (stdlib, third-party, local).\n- **f-strings**: Prefer f-strings over .format() or % formatting.\n- **Context managers**: Use `with` for file/resource handling.\n- **Exception handling**: Catch specific exceptions, never bare `except:`.\n- **Tensor operations**: Prefer vectorized ops over Python loops.\n- **Device handling**: Always handle CPU/GPU device placement explicitly.\n- **Memory**: Use `torch.no_grad()` for inference, detach tensors when needed.\n- **Reproducibility**: Set random seeds where applicable.\n- **Reference**: https://pytorch.org/docs/stable/",
     "FILE_PATTERNS": "**/*.py",
     "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build,wandb,runs,checkpoints"
@@ -22,6 +24,7 @@
     "VERIFY_CMD": "npx tsc --noEmit && npm test",
     "SYNTAX_CHECK_CMD": "npx tsc --noEmit",
     "SYNTAX_CHECK_ENABLED": false,
+    "LOG_PATTERNS": "**/*.log,npm-debug.log*,logs/**",
     "LANG_RULES": "- **Strict mode**: `strict: true` in tsconfig.json.\n- **No `any`**: Avoid `any` type; use `unknown` + type narrowing.\n- **Null safety**: Use optional chaining (?.) and nullish coalescing (??).\n- **Async/await**: Prefer over raw Promises.\n- **Error handling**: Always handle Promise rejections.\n- **Imports**: Use named imports, avoid default exports where possible.\n- **Reference**: https://www.typescriptlang.org/docs/",
     "FILE_PATTERNS": "**/*.ts,**/*.tsx",
     "EXCLUDE_DIRS": "node_modules,dist,build,.next"
@@ -31,6 +34,7 @@
     "VERIFY_CMD": "cargo check && cargo test",
     "SYNTAX_CHECK_CMD": "cargo check",
     "SYNTAX_CHECK_ENABLED": false,
+    "LOG_PATTERNS": "**/*.log,logs/**",
     "LANG_RULES": "- **Error handling**: Use `Result<T, E>` and `?` operator; avoid `.unwrap()` in production code.\n- **Ownership**: Follow ownership/borrowing rules strictly.\n- **Clippy**: Code must pass `cargo clippy` without warnings.\n- **Formatting**: Must pass `cargo fmt --check`.\n- **unsafe**: Avoid `unsafe` blocks unless absolutely necessary with safety comments.\n- **Reference**: https://doc.rust-lang.org/book/",
     "FILE_PATTERNS": "**/*.rs",
     "EXCLUDE_DIRS": "target"
@@ -40,6 +44,7 @@
     "VERIFY_CMD": "\"C:\\Program Files\\AutoHotkey\\AutoHotkey.exe\" /ErrorStdOut main.ahk",
     "SYNTAX_CHECK_CMD": "\"C:\\Program Files\\AutoHotkey\\AutoHotkey.exe\" /ErrorStdOut \"$FILE\"",
     "SYNTAX_CHECK_ENABLED": true,
+    "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **v2 syntax forbidden**: No `MsgBox(\"text\")`, no `:=` only assignments, no `Map()`/`Array()`.\n- **Commands use comma syntax**: `MsgBox, text` NOT `MsgBox(\"text\")`.\n- **Variable dereferencing**: `%var%` (legacy) and expression mode are both valid; follow existing file convention.\n- **String concatenation**: Use `.` (dot) operator.\n- **#Include rules**: No top-level labels + bare `return`, no top-level hotkey definitions in included files.\n- **Timers**: Use `SetTimer, % Func(\"Name\"), period` (not label timers).\n- **GUI**: Define variables via `Gui, Add` with `v` option, retrieve with `Gui, Submit`.\n- **Reference**: https://www.autohotkey.com/docs/v1/",
     "FILE_PATTERNS": "**/*.ahk",
     "EXCLUDE_DIRS": ""
@@ -49,6 +54,7 @@
     "VERIFY_CMD": "& \"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" /ErrorStdOut main.ahk",
     "SYNTAX_CHECK_CMD": "\"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" /ErrorStdOut /CP65001 \"$FILE\"",
     "SYNTAX_CHECK_ENABLED": true,
+    "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **v1 syntax forbidden**: No `MsgBox text`, no `If var = value`, no legacy commands.\n- **Commands are functions**: `MsgBox(\"text\")` NOT `MsgBox, text`.\n- **`:=` for ALL assignments**.\n- **NO `%var%`** (use direct variable reference).\n- **Globals**: Explicit `global` declaration required.\n- **Expressions**: All conditions use parentheses: `if (cond)`, `while (cond)`.\n- **Strings**: Prefer `\"double quotes\"`.\n- **Objects**: Use `Map()`/`Array()`.\n- **Reference**: https://www.autohotkey.com/docs/v2/",
     "FILE_PATTERNS": "**/*.ahk",
     "EXCLUDE_DIRS": ""
@@ -58,6 +64,7 @@
     "VERIFY_CMD": "msbuild /m /p:Configuration=Debug /verbosity:minimal",
     "SYNTAX_CHECK_CMD": "",
     "SYNTAX_CHECK_ENABLED": false,
+    "LOG_PATTERNS": "**/*.log,**/msbuild.log,Debug/**/*.log,Release/**/*.log",
     "LANG_RULES": "- **RAII**: リソース管理には `unique_ptr`/`shared_ptr` を使用。生 `new`/`delete` 禁止。\n- **const 参照**: コピー不要な引数は `const&` で渡す。\n- **プリコンパイル済みヘッダ**: `pch.h` 使用中なら全 `.cpp` の先頭で `#include \"pch.h\"` 必須。\n- **インクルード順序**: 1) pch.h 2) 対応する .h 3) 標準ライブラリ 4) サードパーティ 5) プロジェクト内ヘッダ。\n- **警告レベル**: `/W4` でクリーンなこと。`#pragma warning(disable:...)` は最小限に。\n- **MSVC 拡張**: 非標準拡張（`__declspec` 等）は必要時のみ、コメントで理由記載。\n- **ヘッダガード**: `#pragma once` を使用。\n- **文字コード**: `/utf-8` コンパイラオプション使用（VS 2022 デフォルト）。BOM なし UTF-8 推奨。\n- **C++ 標準**: `/std:c++17` 以上を推奨。\n- **STL 活用**: `<algorithm>` 等を活用、手動ループより優先。\n- **例外安全**: SEH (`__try`/`__except`) と C++ 例外を混在させない。\n- **スマートポインタ**: `make_unique`/`make_shared` を優先。\n- **move セマンティクス**: 大きなオブジェクトの所有権移動には `std::move` を活用。\n- **Reference**: https://learn.microsoft.com/en-us/cpp/",
     "FILE_PATTERNS": "**/*.cpp,**/*.h,**/*.inl,**/*.vcxproj,**/*.sln",
     "EXCLUDE_DIRS": "x64,x86,Debug,Release,.vs,out,packages,ipch,ARM,ARM64,vcpkg_installed"
