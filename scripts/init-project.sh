@@ -5,8 +5,8 @@
 # Copies .claude/ templates into the current directory and substitutes
 # placeholders from presets.json.
 # Existing files are NOT overwritten unless -f is specified.
-# Use --workflow-only to update only reusable workflow files under
-# .claude/commands/ and .claude/agents/ while preserving project context.
+# Use --workflow-only to update managed workflow files while preserving
+# project context and runtime state.
 
 set -euo pipefail
 
@@ -103,15 +103,16 @@ for root, dirs, files in os.walk(template_dir):
         src = os.path.join(root, fname)
         rel = os.path.relpath(src, template_dir).replace('\\', '/')
         dst = os.path.join(dest_dir, rel)
+        existed_before = os.path.exists(dst)
 
         if workflow_only:
-            is_workflow_file = rel.startswith('commands/') or rel.startswith('agents/')
+            is_context_file = rel.startswith('context/')
             is_runtime_state = rel == 'agents/sessions.json'
-            if not is_workflow_file or is_runtime_state:
+            if is_context_file or is_runtime_state:
                 print(f"  SKIP  {rel} (workflow-only)")
                 continue
 
-        if os.path.exists(dst) and not force:
+        if existed_before and not force:
             print(f"  SKIP  {rel}")
             continue
 
@@ -127,14 +128,11 @@ for root, dirs, files in os.walk(template_dir):
             import shutil
             shutil.copy2(src, dst)
 
-        action = "OVERWRITE" if os.path.exists(dst) and force else "COPY"
+        action = "OVERWRITE" if existed_before else "COPY"
         print(f"  {action}  {rel}")
 PYEOF
 
 # Generate settings.json, CLAUDE.md, settings.local.json, and syntax-check hook via Python
-if [[ "$WORKFLOW_ONLY" == "true" ]]; then
-    echo "  SKIP  generated project files (workflow-only)"
-else
 "$PYTHON" - "$PRESET" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$TEMPLATE" <<'PYEOF2'
 import sys, json, os
 
@@ -148,13 +146,15 @@ p = presets[preset_name]
 is_research = template == "research-survey"
 
 def write_if_new(path, content, label):
-    if os.path.exists(path) and not force:
+    existed_before = os.path.exists(path)
+    if existed_before and not force:
         print(f"  SKIP  {label}")
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(content)
-    print(f"  CREATE {label}")
+    action = "OVERWRITE" if existed_before else "CREATE"
+    print(f"  {action}  {label}")
     return True
 
 # --- settings.json ---
@@ -196,7 +196,34 @@ else:
         if '*.' in pat:
             exts.append('.' + pat.split('*.')[-1])
 
-    if os.path.exists(settings_path):
+    if force:
+        settings_obj = {
+            "hooks": {
+                "SessionStart": [
+                    {
+                        "matcher": "compact",
+                        "hooks": [{
+                            "type": "command",
+                            "command": f"echo 'Reminder: This project uses {lang}. Do not mix syntax versions.'"
+                        }]
+                    }
+                ]
+            }
+        }
+        if syntax_enabled and syntax_cmd:
+            settings_obj["hooks"]["PostToolUse"] = [
+                {
+                    "matcher": "Edit|Write",
+                    "hooks": [{
+                        "type": "command",
+                        "command": "python .claude/hooks/syntax-check.py",
+                        "timeout": 15,
+                        "statusMessage": "Syntax check..."
+                    }]
+                }
+            ]
+        write_if_new(settings_path, json.dumps(settings_obj, indent=2, ensure_ascii=False) + '\n', 'settings.json')
+    elif os.path.exists(settings_path):
         # Backfill: add PostToolUse to existing settings.json if missing
         with open(settings_path, encoding='utf-8') as f:
             settings_obj = json.load(f)
@@ -441,21 +468,16 @@ if force and os.path.exists(local_active):
         f.write(json.dumps(local_obj, indent=2, ensure_ascii=False) + '\n')
     print("  UPDATE settings.local.json (synced with .bak)")
 PYEOF2
-fi
 
 # .gitignore
-if [[ "$WORKFLOW_ONLY" == "true" ]]; then
-    echo "  SKIP  .gitignore (workflow-only)"
-else
-    GITIGNORE="$(pwd)/.gitignore"
-    touch "$GITIGNORE"
-    for entry in ".claude/" ".codex_tmp/"; do
-        if ! grep -qF "$entry" "$GITIGNORE"; then
-            echo "$entry" >> "$GITIGNORE"
-            echo "  GITIGNORE += $entry"
-        fi
-    done
-fi
+GITIGNORE="$(pwd)/.gitignore"
+touch "$GITIGNORE"
+for entry in ".claude/" ".codex_tmp/"; do
+    if ! grep -qF "$entry" "$GITIGNORE"; then
+        echo "$entry" >> "$GITIGNORE"
+        echo "  GITIGNORE += $entry"
+    fi
+done
 
 echo ""
 echo "=== Done ==="
