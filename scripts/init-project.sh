@@ -605,6 +605,12 @@ exit $exitCode
 
 {lang_rules}
 
+## Commit Messages
+
+- 1行目 (subject): 英語。imperative form (e.g. `Fix authentication bug`)
+- 2行目: 空行
+- 3行目以降 (body): 日本語可。変更理由・詳細を記述
+
 ## Testing
 
 検証コマンド: `{verify_cmd}`
@@ -642,6 +648,12 @@ if is_research:
 ## Workflow
 
 `/scope` → `/search` → `/read` → `/outline` → `/draft` → `/review` → `/convert`
+
+## Commit Messages
+
+- 1行目 (subject): 英語。imperative form (e.g. `Add survey section on X`)
+- 2行目: 空行
+- 3行目以降 (body): 日本語可。変更理由・詳細を記述
 """
     write_if_new(claude_md_path, claude_md, 'CLAUDE.md')
 
@@ -795,6 +807,9 @@ done
 
 echo ""
 echo "=== Done ==="
+echo ""
+echo "Note:"
+echo "  Newly generated repo-local commands / skills may require reopening the Claude Code / Codex session."
 echo ""
 echo "Next:"
 if [[ "$TEMPLATE" == "research-survey" ]]; then
