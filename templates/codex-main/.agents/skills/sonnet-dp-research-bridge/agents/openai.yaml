@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sonnet DP Bridge"
+  short_description: "Prepare manual Sonnet research handoff"
+  default_prompt: "Use this skill to prepare a neutral research brief for Claude/Sonnet about unresolved discussion points."

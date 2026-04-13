@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Implement"
+  short_description: "Execute tasks with verification"
+  default_prompt: "Use this skill to implement the next task from .agents/context/tasks.md and verify after each change."

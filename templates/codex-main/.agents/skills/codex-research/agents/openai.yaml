@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Research"
+  short_description: "Analyze a codebase before planning"
+  default_prompt: "Use this skill to research the current repository and record findings in .agents/context/research.md."

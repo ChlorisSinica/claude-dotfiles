@@ -1,0 +1,105 @@
+# Claude Workflow
+
+Claude Code 主体でこの dotfiles を使うときの入口と運用メモです。
+
+## セットアップ
+
+```bash
+git clone https://github.com/ChlorisSinica/claude-dotfiles.git ~/claude-dotfiles
+bash ~/claude-dotfiles/setup.sh
+```
+
+更新時:
+
+```bash
+cd ~/claude-dotfiles
+git pull
+bash setup.sh
+bash setup.sh -f
+```
+
+## 主な入口
+
+新規プロジェクト:
+
+```text
+/init-project python-pytorch
+```
+
+既存プロジェクトの workflow 更新:
+
+```text
+/update-workflow python-pytorch
+```
+
+互換 alias:
+
+```text
+/update-skills python-pytorch
+```
+
+## `/init-project`
+
+- 既定テンプレートは `project-init`
+- `survey-cv`, `survey-ms` は `research-survey` テンプレートを使用
+- `--codex-main` を付けると Codex-first テンプレートを Claude Code から互換的に呼べる
+
+例:
+
+```text
+/init-project python
+/init-project survey-cv
+/init-project --codex-main python
+```
+
+## `/update-workflow`
+
+- `.claude/context/` と runtime state を保持しつつ、template-managed files を更新
+- `--codex-main` では `.agents/context/` と `.agents/reviews/` を保持しつつ Codex-first asset を更新
+
+例:
+
+```text
+/update-workflow python
+/update-workflow --codex-main python
+```
+
+## Claude 側の自動承認
+
+この節は `.claude/settings.local.json` を使う workflow 向けです。
+
+`/init-project` 実行時に `.claude/settings.local.json.bak` が生成されます。必要なときだけ有効化してください。
+
+```bash
+cd /path/to/your/project
+
+# ON
+mv .claude/settings.local.json.bak .claude/settings.local.json
+
+# OFF
+mv .claude/settings.local.json .claude/settings.local.json.bak
+```
+
+注意:
+
+- `Bash(git *)` や `Bash(*)` のような広い許可は避ける
+- `git push` は手動承認のまま維持する
+- 検証コマンドの許可候補は preset に応じて自動生成される
+
+## Claude から Codex を使う場合
+
+`codex-plugin-cc` は Claude Code から `/codex:*` を使う場合に便利です。
+
+```text
+/plugin marketplace add openai/codex-plugin-cc
+/plugin install codex@openai-codex
+/reload-plugins
+/codex:setup
+```
+
+## 関連ページ
+
+- [Codex Workflow](./codex-workflow.md)
+- [Research Survey](./research-survey.md)
+- [Windows Terminal](./windows-terminal.md)
+- [Statusline](./statusline.md)

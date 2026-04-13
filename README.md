@@ -2,11 +2,31 @@
 
 Claude Code × Codex 連携ワークフローのグローバル設定。
 
+## 早見表
+
+- Claude Code 主体で使う: [Claude Workflow](./docs/claude-workflow.md)
+- Codex 主体で使う: [Codex Workflow](./docs/codex-workflow.md)
+- 研究サーベイ用: [Research Survey](./docs/research-survey.md)
+- Windows Terminal 補助: [Windows Terminal](./docs/windows-terminal.md)
+- ステータスライン: [Statusline](./docs/statusline.md)
+
 ## セットアップ
 
 ```bash
 git clone https://github.com/ChlorisSinica/claude-dotfiles.git ~/claude-dotfiles
 bash ~/claude-dotfiles/setup.sh
+```
+
+Codex 用の global skills も入れる場合:
+
+```bash
+bash ~/claude-dotfiles/setup.sh --codex
+```
+
+既存の Claude / Codex 用ファイルを上書き更新する場合:
+
+```bash
+bash ~/claude-dotfiles/setup.sh -f --codex
 ```
 
 > **注意**: Windows では Git Bash を使用してください（コマンドプロンプトでは正常に動作しません）。
@@ -15,70 +35,51 @@ bash ~/claude-dotfiles/setup.sh
 
 - `commands/init-project.md` — `/init-project` グローバルコマンド
 - `commands/update-workflow.md` — 既存プロジェクトの workflow files 更新コマンド
+- `commands/update-skills.md` — `/update-workflow` の互換 alias
 - `templates/project-init/` — 開発プロジェクト初期化テンプレート
 - `templates/research-survey/` — 研究サーベイ用テンプレート
+- `templates/codex-main/` — Codex-first プロジェクト用テンプレート
 - `scripts/init-project.sh` — テンプレート展開スクリプト（`/init-project` から呼び出し）
 - `scripts/survey-convert.sh` — Markdown → LaTeX 変換スクリプト
+
+`setup.sh --codex` を使うと、さらに `~/.codex/skills/` に以下の global skills が入ります:
+
+- `init-project-codex` — Codex から `codex-main` scaffold を作る入口
+- `update-workflow-codex` — 既存の Codex-first workflow asset を更新する入口
+
+初回導入は `setup.sh --codex` で十分です。`-f` は既存ファイルを上書き更新したいときだけ使用してください。
 
 ## グローバル設定の更新
 
 ```bash
 cd ~/claude-dotfiles
 git pull
-bash setup.sh       # 新規ファイルのみコピー
-bash setup.sh -f    # 全ファイル上書き（既存を更新したい場合）
+bash setup.sh             # Claude 用の新規ファイルのみコピー
+bash setup.sh -f          # Claude 用ファイルを上書き更新
+bash setup.sh --codex     # Claude + Codex 用の新規ファイルのみコピー
+bash setup.sh -f --codex  # Claude + Codex 用ファイルを上書き更新
 ```
-
-## Windows Terminal Helpers
-
-`windows-terminal/` 配下にあります。
-
-**統合入口**
-`windows-terminal/setup-terminal.bat`
-主なセットアップはこの 1 本から選べます。
-
-```bat
-windows-terminal\setup-terminal.bat git-bash-profile
-windows-terminal\setup-terminal.bat bell
-windows-terminal\setup-terminal.bat toast enable C:\path\to\project
-windows-terminal\setup-terminal.bat toast disable C:\path\to\project
-```
-
-**互換用の個別入口**
-以下の `_setup-*.bat` は旧来の個別入口です。基本は `setup-terminal.bat` の利用を推奨します。
-
-**既存設定に追記する**
-`windows-terminal/_setup-git-bash-profile.bat`
-既存の Windows Terminal 設定を保持したまま、Git Bash profile を追加します。必要に応じて font size も更新します。初期セットアップ向けです。bell は既定で無効のままにするため、音やタスクバー点滅が必要な場合は別途 `bell` を実行してください。
-
-**PowerShell / Git Bash のベル通知を有効化する**
-`windows-terminal/_setup-terminal-bell.bat`
-Windows Terminal の `profiles.defaults.bellStyle` と既存の `PowerShell` / `Windows PowerShell` / `Git Bash` profile を更新し、音とタスクバー点滅を有効化します。Git Bash を使う場合は `%USERPROFILE%\.inputrc` も `set bell-style audible` に更新します。
-
-**Claude Code のトースト通知を有効化する**
-`windows-terminal/_setup-toast-notify.bat --enable [project_dir]`
-対象プロジェクトの `.claude/settings.json` に `Notification(permission_prompt / idle_prompt)` と `Stop` の hook を追加し、Win11 のトースト通知を有効化します。通知は英語表示で、フォルダ名を本文に出します。クリック時は既存の `Windows Terminal` 前面化を試み、失敗時は何もしません。
-
-**Claude Code のトースト通知を無効化する**
-`windows-terminal/_setup-toast-notify.bat --disable [project_dir]`
-対象プロジェクトの `.claude/settings.json` から通知用 hook だけを削除します。通知スクリプトやユーザー単位のプロトコル登録は残します。
-
-**Git Bash のベル通知を有効化する**
-`windows-terminal/_setup-git-bash-bell.bat`
-Git Bash profile の `bellStyle` を `all` に設定し、`%USERPROFILE%\.inputrc` を `set bell-style audible` に更新します。Git Bash のみ個別に調整したい場合向けです。
-
-**設定を丸ごと同期する**
-`windows-terminal/import.bat` / `windows-terminal/export.bat`
-`windows-terminal/settings.json` と `windows-terminal/.inputrc` を snapshot として import / export します。新しい PC への移行や完全同期向けです。
 
 ## 使い方
 
-通常は Claude Code コマンドを入口にしてください。
+Claude Code では `/command`、Codex では `$skill` を入口にしてください。
 
 新規プロジェクト:
 
 ```
 /init-project python-pytorch
+```
+
+Codex 主体テンプレート:
+
+```
+$init-project-codex python
+```
+
+Claude Code から使う場合の互換入口:
+
+```
+/init-project --codex-main python
 ```
 
 既存プロジェクトで workflow files だけ更新:
@@ -89,13 +90,53 @@ Git Bash profile の `bellStyle` を `all` に設定し、`%USERPROFILE%\.inputr
 
 `/update-workflow` は `.claude/context/` と `.claude/agents/sessions.json` を保持しつつ、template-managed files と generated workflow files（`.claude/CLAUDE.md`、`.claude/settings.json`、`.claude/settings.local.json`、`.claude/hooks/syntax-check.py`、`.gitignore` を含む）を更新します。
 
-### 開発プリセット
+`bash ~/.claude/scripts/init-project.sh --codex-main <preset>` は `.claude/` ではなく `.agents/` を主軸とした Codex-first scaffold を生成します。テンプレート定義自体は従来どおり `~/.claude/templates/` から配布されます。
 
-- `python`, `python-pytorch`, `typescript`, `rust`, `ahk`, `ahk-v2`, `cpp-msvc`
-- `survey-cv` — Computer Vision（CVPR, ICCV, ECCV 等）
-- `survey-ms` — Materials Science（Acta Materialia, Computational Materials Science 等）
+`/init-project --codex-main <preset>` は Claude Code から同じ処理を呼ぶための互換入口です。
 
-## codex-plugin-cc のインストール（推奨）
+生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `scripts/run-verify.{sh,ps1}` です。
+
+既存プロジェクトの Codex workflow asset を更新する場合:
+
+```
+$update-workflow-codex python
+```
+
+低レベルの実装コマンドを直接使う場合は、次でも同じ処理を呼べます:
+
+```bash
+bash ~/.claude/scripts/init-project.sh --codex-main python
+```
+
+### Codex-first の最短フロー
+
+初回セットアップ:
+
+```bash
+bash ~/claude-dotfiles/setup.sh --codex
+```
+
+新規プロジェクトを Codex-first で初期化:
+
+```text
+$init-project-codex ahk
+```
+
+既存プロジェクトの `.agents` workflow asset を更新:
+
+```text
+$update-workflow-codex ahk
+```
+
+初期化後の主な入口:
+
+- `.agents/skills/codex-research` — コードベース調査
+- `.agents/skills/codex-plan` — plan/tasks 作成
+- `.agents/skills/codex-implement` — 実装と検証
+- `.agents/skills/codex-review` — plan / 実装レビュー
+- `.agents/skills/sonnet-dp-research-bridge` — 必要時のみ Claude / Sonnet へ人力委譲
+
+## codex-plugin-cc のインストール（Claude Code から `/codex:*` を使う場合に推奨）
 
 `/codex:review`（汎用レビュー）や `/codex:adversarial-review` を使う場合に推奨です。Claude Code のチャット内で以下を実行してください:
 
@@ -107,27 +148,6 @@ Git Bash profile の `bellStyle` を `all` に設定し、`%USERPROFILE%\.inputr
 ```
 
 Codex CLI が未インストールの場合は `/codex:setup` が自動インストールを提案します。未ログインの場合は `! codex login` を実行してください。
-
-## ステータスライン
-
-[nyosegawa.com Pattern5](https://nyosegawa.com/posts/claude-code-statusline-rate-limits/) を拡張した2行構成のカスタムステータスライン:
-
-```
-Opus 4.6 (1M context)
-ctx ⣄        5% (50k/1.0M) │ 5h ⣤        6% (2h55m) │ 7d ⣿⣿⣿⣤     44% (1d6h)
-```
-
-- **1行目**: モデル名
-- **2行目**: コンテキスト使用量 (トークン数) / 5時間レート制限 (残り時間) / 7日レート制限 (残り時間)
-- Braille ドットバーにグラデーション着色 (緑→黄→赤)
-
-### セットアップ
-
-```bash
-bash ~/claude-dotfiles/setup.sh --statusline      # setup.sh と同時にインストール
-bash ~/claude-dotfiles/setup-statusline.sh        # ステータスラインのみ
-bash ~/claude-dotfiles/setup-statusline.sh -f     # 上書き更新
-```
 
 ## ワークフロー
 
@@ -151,73 +171,15 @@ bash ~/claude-dotfiles/setup-statusline.sh -f     # 上書き更新
 
 **前提**: `/convert` には Pandoc が必要です（`winget install --id JohnMacFarlane.Pandoc`）。
 
-## 自動承認（Auto-Approve）
+## 開発プリセット
 
-ワークフローの自律ループ中にツール承認が大量発生するのを防ぐため、`settings.local.json`（git-ignored）で自動承認を設定できます。
+- 開発用: `python`, `python-pytorch`, `typescript`, `rust`, `ahk`, `ahk-v2`, `cpp-msvc`, `unity`, `blender`
+- 研究用: `survey-cv`, `survey-ms`
 
-`/init-project` 実行時に `settings.local.json.bak` として生成されます（**デフォルト OFF**）。
+## 詳細ドキュメント
 
-### 自動承認の ON/OFF 切り替え
-
-対象プロジェクトのルートディレクトリで実行:
-
-```bash
-cd /path/to/your/project
-
-# ON — 自動承認を有効化（初回）
-mv .claude/settings.local.json.bak .claude/settings.local.json
-
-# OFF — 全ツールを毎回手動承認に戻す
-mv .claude/settings.local.json .claude/settings.local.json.bak
-```
-
-### 開発ワークフローで承認が必要なツール
-
-| コマンド | ツール | 発生回数 |
-|---------|--------|---------|
-| `/codex-plan-review` | `Bash(cat ... \| codex review -)` | Phase A 最大2回 + Phase B 最大3回 |
-| `/codex-impl-review` | `Bash(cat ... \| codex review -)` | 最大5サイクル |
-| `/sonnet-dp-research` | `WebSearch`, `WebFetch` | Discussion Point 数×複数回 |
-| `/implement` | `Bash({{VERIFY_CMD}})`, `Edit`, `Write` | タスク数×毎回 |
-| `/implement` (完了後) | `Bash(git add/commit)` | 1回 |
-
-自動承認を有効にする場合、`settings.local.json` に以下を追加:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(codex review:*)",
-      "Bash(cat .claude/context/*)",
-      "Bash(powershell:*)",
-      "WebSearch",
-      "WebFetch"
-    ]
-  }
-}
-```
-
-> **注意**:
-> - `Bash(git *)` や `Bash(*)` は `git push` も自動承認されるため使用しないこと
-> - `git push` は手動承認を維持する
-> - 上記は共通部分のみ。検証コマンド（`python -m pytest`, `cargo test` 等）のパターンは `/init-project` 時に `settings.local.json.bak` へ自動生成される
-
-### 研究サーベイワークフローで承認が必要なツール
-
-| コマンド | ツール | 発生回数 |
-|---------|--------|---------|
-| `/search` | `WebSearch` | 検索クエリ数×複数回 |
-| `/read` | `WebFetch`, `Bash(pqa/paper/marker_single)` | 論文数×毎回 |
-| `/review` | `Bash(python -c ... semanticscholar)`, `WebSearch` | 引用数×毎回 |
-| `/convert` | `Bash(pandoc/bibcure)` | 1回 |
-
-研究テンプレートでは `/init-project` 時に `settings.local.json.bak` として生成されます（デフォルト OFF）。ON にすると以下が自動承認されます:
-
-- `WebSearch` — 全検索クエリ
-- `WebFetch` — arxiv.org, semanticscholar.org, scholar.google.com, openreview.net, aclanthology.org, papers.nips.cc, openaccess.thecvf.com, doi.org
-- `Bash` — git, pqa, paper, marker_single, bibcure, pandoc, python -c
+- [Claude Workflow](./docs/claude-workflow.md)
+- [Codex Workflow](./docs/codex-workflow.md)
+- [Research Survey](./docs/research-survey.md)
+- [Windows Terminal](./docs/windows-terminal.md)
+- [Statusline](./docs/statusline.md)

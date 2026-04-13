@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # init-project.sh
-# Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f] [--workflow-only]
+# Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] [--codex-main] <preset> [-f] [--workflow-only]
 #
-# Copies .claude/ templates into the current directory and substitutes
+# Copies template files into the current directory and substitutes
 # placeholders from presets.json.
 # Existing files are NOT overwritten unless -f is specified.
 # Use --workflow-only to update managed workflow files while preserving
@@ -14,11 +14,13 @@ PRESET=""
 FORCE=false
 TEMPLATE="project-init"
 WORKFLOW_ONLY=false
+CODEX_MAIN=false
 
 for arg in "$@"; do
     case "$arg" in
         -f) FORCE=true ;;
         --workflow-only|--skills-only) WORKFLOW_ONLY=true ;;
+        --codex-main) CODEX_MAIN=true ;;
         -t) :;;  # value consumed below
         *)
             # If previous arg was -t, this is the template name
@@ -32,19 +34,35 @@ for arg in "$@"; do
     PREV_ARG="$arg"
 done
 
+if [[ "$CODEX_MAIN" == "true" ]]; then
+    if [[ "$TEMPLATE" != "project-init" && "$TEMPLATE" != "codex-main" ]]; then
+        echo "ERROR: --codex-main cannot be combined with -t $TEMPLATE" >&2
+        exit 1
+    fi
+    TEMPLATE="codex-main"
+fi
+
 if [[ -z "$PRESET" ]]; then
     echo "ERROR: preset name required" >&2
-    echo "Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] <preset> [-f] [--workflow-only]" >&2
+    echo "Usage: bash ~/.claude/scripts/init-project.sh [-t <template>] [--codex-main] <preset> [-f] [--workflow-only]" >&2
     echo "" >&2
-    echo "Templates: project-init (default), research-survey" >&2
-    echo "Presets (project-init): python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc" >&2
+    echo "Templates: project-init (default), research-survey, codex-main" >&2
+    echo "Presets (project-init): python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc, unity, blender" >&2
+    echo "Presets (codex-main): python, python-pytorch, typescript, rust, ahk, ahk-v2, cpp-msvc, unity, blender" >&2
     echo "Presets (research-survey): survey-cv, survey-ms" >&2
     exit 1
 fi
 
-TEMPLATE_DIR="${HOME}/.claude/templates/${TEMPLATE}/.claude"
+if [[ "$TEMPLATE" == "codex-main" ]]; then
+    TEMPLATE_SUBDIR=".agents"
+    DEST_DIR="$(pwd)/.agents"
+else
+    TEMPLATE_SUBDIR=".claude"
+    DEST_DIR="$(pwd)/.claude"
+fi
+
+TEMPLATE_DIR="${HOME}/.claude/templates/${TEMPLATE}/${TEMPLATE_SUBDIR}"
 PRESET_FILE="${HOME}/.claude/templates/${TEMPLATE}/presets.json"
-DEST_DIR="$(pwd)/.claude"
 
 if [[ ! -d "$TEMPLATE_DIR" ]]; then
     echo "ERROR: Template not found: $TEMPLATE_DIR" >&2
@@ -76,12 +94,13 @@ else
     echo "ERROR: Python not found. Install Python 3 to use this script." >&2
     exit 1
 fi
-"$PYTHON" - "$PRESET" "$TEMPLATE_DIR_PY" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$WORKFLOW_ONLY" <<'PYEOF'
+"$PYTHON" - "$PRESET" "$TEMPLATE_DIR_PY" "$DEST_DIR_PY" "$PRESET_FILE_PY" "$FORCE" "$WORKFLOW_ONLY" "$TEMPLATE" <<'PYEOF'
 import sys, json, os
 
-preset_name, template_dir, dest_dir, preset_file, force_str, workflow_only_str = sys.argv[1:7]
+preset_name, template_dir, dest_dir, preset_file, force_str, workflow_only_str, template = sys.argv[1:8]
 force = force_str == "true"
 workflow_only = workflow_only_str == "true"
+is_codex_main = template == "codex-main"
 
 with open(preset_file, encoding='utf-8') as f:
     presets = json.load(f)
@@ -106,11 +125,18 @@ for root, dirs, files in os.walk(template_dir):
         existed_before = os.path.exists(dst)
 
         if workflow_only:
-            is_context_file = rel.startswith('context/')
-            is_runtime_state = rel == 'agents/sessions.json'
-            if is_context_file or is_runtime_state:
-                print(f"  SKIP  {rel} (workflow-only)")
-                continue
+            if is_codex_main:
+                is_context_file = rel.startswith('context/')
+                is_review_state = rel.startswith('reviews/')
+                if is_context_file or is_review_state:
+                    print(f"  SKIP  {rel} (workflow-only)")
+                    continue
+            else:
+                is_context_file = rel.startswith('context/')
+                is_runtime_state = rel == 'agents/sessions.json'
+                if is_context_file or is_runtime_state:
+                    print(f"  SKIP  {rel} (workflow-only)")
+                    continue
 
         if existed_before and not force:
             print(f"  SKIP  {rel}")
@@ -144,6 +170,8 @@ with open(preset_file, encoding='utf-8') as f:
 p = presets[preset_name]
 
 is_research = template == "research-survey"
+is_codex_main = template == "codex-main"
+settings_path = os.path.join(dest_dir, 'settings.json')
 
 def write_if_new(path, content, label):
     existed_before = os.path.exists(path)
@@ -157,10 +185,123 @@ def write_if_new(path, content, label):
     print(f"  {action}  {label}")
     return True
 
-# --- settings.json ---
-settings_path = os.path.join(dest_dir, 'settings.json')
+if is_codex_main:
+    verify_cmd = p.get('VERIFY_CMD', '')
+    verify_shell = p.get('VERIFY_SHELL', 'bash')
+    primary_log_dir = p.get('PRIMARY_LOG_DIR', '.agents/logs/verify')
 
-if is_research:
+    # --- scripts/run-verify.sh (codex-main only) ---
+    verify_sh_path = os.path.join(os.getcwd(), 'scripts', 'run-verify.sh')
+    verify_sh = f'''#!/usr/bin/env bash
+set -uo pipefail
+
+VERIFY_CMD={json.dumps(verify_cmd)}
+VERIFY_SHELL={json.dumps(verify_shell)}
+LOG_DIR={json.dumps(primary_log_dir)}
+
+mkdir -p "$LOG_DIR/history"
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+started_at="$(date -Iseconds)"
+log_path="$LOG_DIR/history/${{timestamp}}-verify.log"
+status_path="$LOG_DIR/history/${{timestamp}}-status.json"
+latest_log="$LOG_DIR/latest.log"
+latest_status="$LOG_DIR/latest.status.json"
+
+json_escape() {{
+    awk -v s="$1" 'BEGIN {{
+        gsub(/\\\\/,"\\\\\\\\",s)
+        gsub(/"/,"\\\\\\"",s)
+        printf "%s", s
+    }}'
+}}
+
+exit_code=0
+
+if [[ "$VERIFY_SHELL" == "powershell" ]]; then
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -NoProfile -ExecutionPolicy Bypass -Command "$VERIFY_CMD" 2>&1 | tee "$log_path"
+        exit_code=${{PIPESTATUS[0]}}
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$VERIFY_CMD" 2>&1 | tee "$log_path"
+        exit_code=${{PIPESTATUS[0]}}
+    else
+        printf '%s\\n' 'ERROR: PowerShell was not found but VERIFY_SHELL=powershell.' | tee "$log_path"
+        exit_code=127
+    fi
+else
+    bash -lc "$VERIFY_CMD" 2>&1 | tee "$log_path"
+    exit_code=${{PIPESTATUS[0]}}
+fi
+
+finished_at="$(date -Iseconds)"
+escaped_command="$(json_escape "$VERIFY_CMD")"
+escaped_log_path="$(json_escape "$log_path")"
+
+cat > "$status_path" <<EOF
+{{
+  "ok": $([[ "$exit_code" -eq 0 ]] && echo true || echo false),
+  "command": "$escaped_command",
+  "exit_code": $exit_code,
+  "started_at": "$started_at",
+  "finished_at": "$finished_at",
+  "log_path": "$escaped_log_path"
+}}
+EOF
+
+cp "$log_path" "$latest_log"
+cp "$status_path" "$latest_status"
+
+exit "$exit_code"
+'''
+    write_if_new(verify_sh_path, verify_sh, 'scripts/run-verify.sh')
+
+    # --- scripts/run-verify.ps1 (codex-main only) ---
+    verify_ps1_path = os.path.join(os.getcwd(), 'scripts', 'run-verify.ps1')
+    verify_ps1 = f'''$ErrorActionPreference = "Continue"
+
+$verifyCommand = @'
+{verify_cmd}
+'@
+
+$logDir = "{primary_log_dir}"
+$historyDir = Join-Path $logDir "history"
+New-Item -ItemType Directory -Path $historyDir -Force | Out-Null
+
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$startedAt = (Get-Date).ToString("o")
+$logPath = Join-Path $historyDir "$timestamp-verify.log"
+$statusPath = Join-Path $historyDir "$timestamp-status.json"
+$latestLog = Join-Path $logDir "latest.log"
+$latestStatus = Join-Path $logDir "latest.status.json"
+
+try {{
+    Invoke-Expression $verifyCommand 2>&1 | Tee-Object -FilePath $logPath
+    $exitCode = if ($LASTEXITCODE -ne $null) {{ [int]$LASTEXITCODE }} else {{ 0 }}
+}} catch {{
+    $_ | Out-String | Tee-Object -FilePath $logPath -Append | Out-Host
+    $exitCode = 1
+}}
+
+$finishedAt = (Get-Date).ToString("o")
+$status = [PSCustomObject]@{{
+    ok = ($exitCode -eq 0)
+    command = $verifyCommand.Trim()
+    exit_code = $exitCode
+    started_at = $startedAt
+    finished_at = $finishedAt
+    log_path = $logPath
+}}
+
+$status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
+Copy-Item -LiteralPath $logPath -Destination $latestLog -Force
+Copy-Item -LiteralPath $statusPath -Destination $latestStatus -Force
+
+exit $exitCode
+'''
+    write_if_new(verify_ps1_path, verify_ps1, 'scripts/run-verify.ps1')
+
+elif is_research:
     # Research template: simple SessionStart reminder
     domain = p.get('DOMAIN', preset_name)
     if not os.path.exists(settings_path) or force:
@@ -586,6 +727,8 @@ else:
             prefix = ' '.join(prefix_tokens) if prefix_tokens else tokens[0]
             verify_prefixes.add(f'Bash({prefix}:*)')
 
+    context_read_allow = "Bash(cat .agents/context/*)" if is_codex_main else "Bash(cat .claude/context/*)"
+
     dev_allow = [
         "Bash(git status:*)",
         "Bash(git diff:*)",
@@ -593,7 +736,7 @@ else:
         "Bash(git add:*)",
         "Bash(git commit:*)",
         "Bash(codex review:*)",
-        "Bash(cat .claude/context/*)",
+        context_read_allow,
         "WebSearch",
         "WebFetch"
     ]
@@ -618,7 +761,12 @@ PYEOF2
 # .gitignore
 GITIGNORE="$(pwd)/.gitignore"
 touch "$GITIGNORE"
-for entry in ".claude/" ".codex_tmp/"; do
+if [[ "$TEMPLATE" == "codex-main" ]]; then
+    GITIGNORE_ENTRIES=(".agents/" ".codex_tmp/")
+else
+    GITIGNORE_ENTRIES=(".claude/" ".codex_tmp/")
+fi
+for entry in "${GITIGNORE_ENTRIES[@]}"; do
     if ! grep -qF "$entry" "$GITIGNORE"; then
         echo "$entry" >> "$GITIGNORE"
         echo "  GITIGNORE += $entry"
@@ -637,6 +785,13 @@ if [[ "$TEMPLATE" == "research-survey" ]]; then
     echo "  /draft                   → 執筆"
     echo "  /review                  → 品質レビュー"
     echo "  /convert                 → Markdown → LaTeX 変換"
+elif [[ "$TEMPLATE" == "codex-main" ]]; then
+    echo "  .agents/skills/codex-research            → コードベース調査"
+    echo "  .agents/skills/codex-plan                → plan/tasks 作成"
+    echo "  .agents/skills/codex-implement           → 実装と検証"
+    echo "  .agents/skills/codex-review              → plan / 実装レビュー"
+    echo "  .agents/skills/sonnet-dp-research-bridge → Sonnet 調査 bridge"
+    echo "  scripts/run-verify.sh or scripts/run-verify.ps1  → 検証"
 else
     echo "  /research                → コードベース分析"
     echo "  /plan <機能>             → 設計（Discussion Points を含む）"

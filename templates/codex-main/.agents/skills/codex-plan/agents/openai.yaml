@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Plan"
+  short_description: "Turn a request into a plan and tasks"
+  default_prompt: "Use this skill to create .agents/context/plan.md and .agents/context/tasks.md for the requested work."

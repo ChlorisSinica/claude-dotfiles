@@ -82,5 +82,29 @@
     "LANG_RULES": "- **RAII**: リソース管理には `unique_ptr`/`shared_ptr` を使用。生 `new`/`delete` 禁止。\n- **const 参照**: コピー不要な引数は `const&` で渡す。\n- **プリコンパイル済みヘッダ**: `pch.h` 使用中なら全 `.cpp` の先頭で `#include \"pch.h\"` 必須。\n- **インクルード順序**: 1) pch.h 2) 対応する .h 3) 標準ライブラリ 4) サードパーティ 5) プロジェクト内ヘッダ。\n- **警告レベル**: `/W4` でクリーンなこと。`#pragma warning(disable:...)` は最小限に。\n- **MSVC 拡張**: 非標準拡張（`__declspec` 等）は必要時のみ、コメントで理由記載。\n- **ヘッダガード**: `#pragma once` を使用。\n- **文字コード**: `/utf-8` コンパイラオプション使用（VS 2022 デフォルト）。BOM なし UTF-8 推奨。\n- **C++ 標準**: `/std:c++17` 以上を推奨。\n- **STL 活用**: `<algorithm>` 等を活用、手動ループより優先。\n- **例外安全**: SEH (`__try`/`__except`) と C++ 例外を混在させない。\n- **スマートポインタ**: `make_unique`/`make_shared` を優先。\n- **move セマンティクス**: 大きなオブジェクトの所有権移動には `std::move` を活用。\n- **Reference**: https://learn.microsoft.com/en-us/cpp/",
     "FILE_PATTERNS": "**/*.cpp,**/*.h,**/*.inl,**/*.vcxproj,**/*.sln",
     "EXCLUDE_DIRS": "x64,x86,Debug,Release,.vs,out,packages,ipch,ARM,ARM64,vcpkg_installed"
+  },
+  "unity": {
+    "LANG": "C# (Unity)",
+    "VERIFY_CMD": "msbuild /m /p:Configuration=Debug /verbosity:minimal",
+    "VERIFY_SHELL": "powershell",
+    "SYNTAX_CHECK_CMD": "",
+    "SYNTAX_CHECK_ENABLED": false,
+    "PRIMARY_LOG_DIR": ".claude/logs/verify",
+    "LOG_PATTERNS": "**/*.log,Logs/**,**/Editor.log",
+    "LANG_RULES": "- **SerializeField**: Inspector に公開するフィールドは `[SerializeField] private` を使用。public フィールドは避ける。\n- **CompareTag**: タグ比較には `CompareTag()` を使用。`== \"tag\"` は GC Alloc が発生する。\n- **GetComponent キャッシュ**: `Awake()` / `Start()` でキャッシュし、`Update()` 内で毎フレーム呼ばない。\n- **Find 禁止**: `Find()` / `FindObjectOfType()` はランタイムで使用しない。参照は Inspector か DI で解決。\n- **TryGetComponent**: null チェック付き取得には `TryGetComponent()` を優先（Unity 2019.2+）。\n- **オブジェクトプーリング**: 頻繁に Instantiate/Destroy するオブジェクトにはプーリングを使用。\n- **コルーチン**: `WaitForSeconds` 等の yield instruction はキャッシュして再利用。\n- **コンポーネント設計**: 1 つの MonoBehaviour に 1 つの責務。\n- **Nullable**: `#nullable enable` を推奨。SerializeField には `[field: MaybeNull]` を適宜使用。\n- **Reference**: https://docs.unity3d.com/Manual/",
+    "FILE_PATTERNS": "**/*.cs,**/*.shader,**/*.compute,**/*.hlsl",
+    "EXCLUDE_DIRS": "Library,Temp,Logs,Builds,Build,obj,.vs,Packages"
+  },
+  "blender": {
+    "LANG": "Python (Blender)",
+    "VERIFY_CMD": "python -m pytest --tb=short -q",
+    "VERIFY_SHELL": "bash",
+    "SYNTAX_CHECK_CMD": "python -m py_compile \"$FILE\"",
+    "SYNTAX_CHECK_ENABLED": true,
+    "PRIMARY_LOG_DIR": ".claude/logs/verify",
+    "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
+    "LANG_RULES": "- **コンテキスト確認**: モード依存操作の前に `bpy.context.mode` を必ずチェック。\n- **bpy.data 優先**: データブロックへのアクセスは `bpy.data` 経由。バッチ処理で `bpy.context.active_object` に依存しない。\n- **bmesh**: メッシュ操作には `bmesh` を使用。完了後は必ず `bm.free()` を呼ぶ。\n- **mathutils**: ベクトル・行列演算には `mathutils` を使用。手動計算は避ける。\n- **アドオン登録**: `register()` で追加したクラス・ハンドラは `unregister()` で必ず解除。\n- **命名規約**: `bl_idname`, `bl_label`, `bl_options` 等の Blender 命名規約に従う。\n- **Operator 設計**: 副作用のある処理は `execute()` に集約。`invoke()` は UI 表示のみ。\n- **プロパティ**: `bpy.props` を使用し、`bpy.types` にアノテーションとして登録。\n- **Reference**: https://docs.blender.org/api/current/",
+    "FILE_PATTERNS": "**/*.py",
+    "EXCLUDE_DIRS": "__pycache__,.venv,venv"
   }
 }

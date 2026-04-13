@@ -1,0 +1,4 @@
+interface:
+  display_name: "Init Project Codex"
+  short_description: "Scaffold a Codex-first project"
+  default_prompt: "Initialize this repository for Codex-first work using the codex-main scaffold."

@@ -2,20 +2,24 @@
 # Claude Code dotfiles installer
 # Usage: bash setup.sh
 #
-# Copies commands/, templates/, and dotfiles/ into ~/.claude/
+# Copies commands/, templates/, and scripts into ~/.claude/
+# Optionally installs Codex global skills into ~/.codex/skills with --codex.
 # Existing files are NOT overwritten (use -f to force).
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLAUDE_DIR="${HOME:-$USERPROFILE}/.claude"
+CODEX_DIR="${HOME:-$USERPROFILE}/.codex"
 FORCE=false
 STATUSLINE=false
+CODEX=false
 
 for arg in "$@"; do
     case "$arg" in
         -f)           FORCE=true ;;
         --statusline) STATUSLINE=true ;;
+        --codex)      CODEX=true ;;
     esac
 done
 
@@ -64,6 +68,12 @@ if [[ "$STATUSLINE" == "true" ]]; then
     echo ""
 fi
 
+if [[ "$CODEX" == "true" ]]; then
+    echo "[codex-skills]"
+    copy_tree "$SCRIPT_DIR/codex/skills" "$CODEX_DIR/skills"
+    echo ""
+fi
+
 echo "=== Done ==="
 echo ""
 echo "Available commands:"
@@ -74,3 +84,4 @@ echo ""
 echo "Options:"
 echo "  -f               Overwrite existing files"
 echo "  --statusline     Also set up the custom status line"
+echo "  --codex          Also install Codex global skills into ~/.codex/skills"
