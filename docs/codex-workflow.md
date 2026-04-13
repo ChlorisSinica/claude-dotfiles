@@ -39,6 +39,29 @@ $init-project-codex ahk
 $update-workflow-codex ahk
 ```
 
+## 開発ワークフロー
+
+Codex-first で進めるときの基本フロー:
+
+```text
+$init-project-codex → $codex-research → $codex-plan
+                    → $sonnet-dp-research-bridge（必要時のみ）
+                    → $codex-implement → $codex-review
+```
+
+役割:
+
+- `$codex-research` はコードベース理解を `.agents/context/research.md` に残す
+- `$codex-plan` は設計とタスクリストを `.agents/context/plan.md`, `.agents/context/tasks.md` に残す
+- `$codex-implement` は task 単位で実装し、`scripts/run-verify.*` で検証する
+- `$codex-review` は plan / 実装レビュー結果を `.agents/reviews/` に保存する
+- `$sonnet-dp-research-bridge` は外部調査が必要な論点だけ Claude / Sonnet に人力委譲する
+
+補足:
+
+- 既存 repo の更新から始めるときは `$init-project-codex` の代わりに `$update-workflow-codex`
+- 小さな修正では `$codex-research` や `$codex-review` を軽量化してよい
+
 ## 生成される主な資産
 
 - `.agents/AGENTS.md`

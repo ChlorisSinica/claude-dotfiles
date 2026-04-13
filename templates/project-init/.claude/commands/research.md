@@ -15,11 +15,14 @@ description: "Phase 1: research.md の作成（プロジェクト全ファイル
 
 - **言語/フレームワーク**: {{LANG}}
 - **検証コマンド**: `{{VERIFY_CMD}}`
+- **優先して読むファイル**: `{{FILE_PATTERNS}}`
+- **通常は読まないディレクトリ/パス**: `{{EXCLUDE_DIRS}}`
+- **通常は読まないファイルパターン**: `{{EXCLUDE_FILE_PATTERNS}}`
 
 ## プロンプト
 
 **（開発）**
-`.agents`，`.context`，`.claude`，`.` で始まるフォルダ，`_` で始まるフォルダ以外のこのプロジェクトのファイルを全てじっくり読み，仕組みや役割，そしてすべての特徴を深く理解してください．それが終わったら，学んだことや発見や知っていることを全て詳細にまとめ，`.claude/context/research.md` を日本語で作成してください．
+`.agents`，`.context`，`.claude`，`.` で始まるフォルダ，`_` で始まるフォルダを除外したうえで，プロジェクト情報に書かれた除外対象は原則として読まず，`{{FILE_PATTERNS}}` に一致する実装本体を優先してじっくり読んでください．ただし，今回のタスクに直接関係する場合だけ例外的に読んで構いません．それが終わったら，学んだことや発見や知っていることを全て詳細にまとめ，`.claude/context/research.md` を日本語で作成してください．
 
 **（不具合）**
 プロジェクト全体の潜在的なバグを探してください。すべてのバグを見つけるまで調査を続けてください。終わったら，調査結果の詳細な報告書を `research.md` に専用のセクションとして追加してください．
@@ -47,6 +50,7 @@ research.md には以下を**必ず**含めること:
 - Separate facts from guesses. If unsure, mark as "要確認".
 - Read actual file contents; never infer from filenames alone.
 - "Deeply" means reading function internals, not just signatures.
+- `{{EXCLUDE_DIRS}}` と `{{EXCLUDE_FILE_PATTERNS}}` は原則として調査対象外。必要なときだけ例外扱いにすること。
 - Do NOT fabricate bugs. If no bugs are found, say so explicitly.
 - **言語制約**: このプロジェクトは {{LANG}} です。他の言語のツールやコマンド（例: 別言語のインタプリタ）を実行しないこと。検証が必要な場合は `{{VERIFY_CMD}}` を使用すること。
 

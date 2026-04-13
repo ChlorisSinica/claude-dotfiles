@@ -766,6 +766,26 @@ if [[ "$TEMPLATE" == "codex-main" ]]; then
 else
     GITIGNORE_ENTRIES=(".claude/" ".codex_tmp/")
 fi
+while IFS= read -r entry; do
+    if [[ -n "$entry" ]]; then
+        GITIGNORE_ENTRIES+=("$entry")
+    fi
+done < <("$PYTHON" - "$PRESET_FILE_PY" "$PRESET" <<'PYEOF3'
+import json
+import sys
+
+preset_file, preset_name = sys.argv[1:3]
+with open(preset_file, encoding='utf-8') as f:
+    presets = json.load(f)
+
+raw = presets.get(preset_name, {}).get('GITIGNORE_ENTRIES', '')
+for part in raw.split(','):
+    entry = part.strip()
+    if not entry or entry == 'none':
+        continue
+    print(entry)
+PYEOF3
+)
 for entry in "${GITIGNORE_ENTRIES[@]}"; do
     if ! grep -qF "$entry" "$GITIGNORE"; then
         echo "$entry" >> "$GITIGNORE"

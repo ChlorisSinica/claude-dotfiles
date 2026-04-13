@@ -64,6 +64,27 @@ bash setup.sh -f
 /update-workflow --codex-main python
 ```
 
+## 開発ワークフロー
+
+Claude Code 主体で進めるときの基本フロー:
+
+```text
+/init-project → /research → /plan → /sonnet-dp-research（省略可）
+              → /codex-plan-review → /implement → /codex-impl-review
+              → /handover, /retro
+```
+
+補足:
+
+- `/sonnet-dp-research` は Discussion Point が残ったときだけ挟む
+- `/codex-plan-review` と `/codex-impl-review` には Codex CLI が必要
+- 小さな変更では `/research` や `/handover`, `/retro` を省略してよい
+
+前提:
+
+- Codex CLI: `npm install -g @openai/codex`
+- `codex-plugin-cc` は `/codex:review` などの汎用レビューを使う場合に推奨
+
 ## Claude 側の自動承認
 
 この節は `.claude/settings.local.json` を使う workflow 向けです。

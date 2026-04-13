@@ -3,12 +3,14 @@
     "DOMAIN": "Computer Vision",
     "KEY_VENUES": "CVPR, ICCV, ECCV, NeurIPS, ICML, ICLR, PAMI, IJCV, TIP, WACV",
     "DOMAIN_KEYWORDS": "object detection, image segmentation, image classification, 3D vision, generative models, self-supervised learning, vision transformer, video understanding, point cloud, NeRF, diffusion model",
-    "SURVEY_RULES": "- 定量比較を含める: ベンチマーク名・データセット・メトリクス（mAP, IoU, FID 等）を明記\n- SOTA テーブルを作成し、手法間の性能を比較\n- 年代順の発展を追い、各手法のブレークスルーを明示\n- アーキテクチャ図や処理パイプラインの説明を含める\n- 公開コード・事前学習モデルの有無を記載"
+    "SURVEY_RULES": "- 定量比較を含める: ベンチマーク名・データセット・メトリクス（mAP, IoU, FID 等）を明記\n- SOTA テーブルを作成し、手法間の性能を比較\n- 年代順の発展を追い、各手法のブレークスルーを明示\n- アーキテクチャ図や処理パイプラインの説明を含める\n- 公開コード・事前学習モデルの有無を記載",
+    "GITIGNORE_ENTRIES": "none"
   },
   "survey-ms": {
     "DOMAIN": "Materials Science (Polycrystalline / Phase Field / Microstructure)",
     "KEY_VENUES": "Acta Materialia, Computational Materials Science, Physical Review Materials, Journal of the Mechanics and Physics of Solids, Modelling and Simulation in Materials Science and Engineering, npj Computational Materials, International Journal of Plasticity, Scripta Materialia",
     "DOMAIN_KEYWORDS": "polycrystalline, phase field simulation, microstructure evolution, grain boundary, crystal plasticity, physical property prediction, CALPHAD, first-principles, finite element method, molecular dynamics, texture, recrystallization, grain growth, phase transformation",
-    "SURVEY_RULES": "- 計算手法とスケール（原子スケール→メソスケール→連続体）を明記\n- 支配方程式・モデルの定式化を含める（自由エネルギー汎関数、構成則等）\n- 実験検証の有無と検証手法（EBSD, XRD, TEM 等）を記載\n- 計算コスト・スケーラビリティの議論を含める\n- オープンソースコード（MOOSE, DAMASK, OpenPhase 等）の利用状況を記載"
+    "SURVEY_RULES": "- 計算手法とスケール（原子スケール→メソスケール→連続体）を明記\n- 支配方程式・モデルの定式化を含める（自由エネルギー汎関数、構成則等）\n- 実験検証の有無と検証手法（EBSD, XRD, TEM 等）を記載\n- 計算コスト・スケーラビリティの議論を含める\n- オープンソースコード（MOOSE, DAMASK, OpenPhase 等）の利用状況を記載",
+    "GITIGNORE_ENTRIES": "none"
   }
 }

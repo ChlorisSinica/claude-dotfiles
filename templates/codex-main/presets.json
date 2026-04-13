@@ -7,7 +7,9 @@
     "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **Type hints**: Use type hints for function signatures.\n- **Imports**: Follow PEP 8 import ordering (stdlib, third-party, local).\n- **f-strings**: Prefer f-strings over .format() or % formatting.\n- **Context managers**: Use `with` for file/resource handling.\n- **Exception handling**: Catch specific exceptions, never bare `except:`.\n- **Docstrings**: Follow Google or NumPy style.\n- **Reference**: https://peps.python.org/pep-0008/",
     "FILE_PATTERNS": "**/*.py",
-    "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build"
+    "EXCLUDE_FILE_PATTERNS": "*.pyc,*.pyo",
+    "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build,.pytest_cache,.mypy_cache,.ruff_cache",
+    "GITIGNORE_ENTRIES": "__pycache__/,*.pyc,*.pyo,.venv/,venv/,.eggs/,*.egg-info/,dist/,build/,.pytest_cache/,.mypy_cache/,.ruff_cache/"
   },
   "python-pytorch": {
     "LANG": "Python / PyTorch",
@@ -17,7 +19,9 @@
     "LOG_PATTERNS": "**/*.log,**/*.status,logs/**,wandb/**/*.log,runs/**/*.log",
     "LANG_RULES": "- **Type hints**: Use type hints for function signatures.\n- **Imports**: Follow PEP 8 import ordering (stdlib, third-party, local).\n- **f-strings**: Prefer f-strings over .format() or % formatting.\n- **Context managers**: Use `with` for file/resource handling.\n- **Exception handling**: Catch specific exceptions, never bare `except:`.\n- **Tensor operations**: Prefer vectorized ops over Python loops.\n- **Device handling**: Always handle CPU/GPU device placement explicitly.\n- **Memory**: Use `torch.no_grad()` for inference, detach tensors when needed.\n- **Reproducibility**: Set random seeds where applicable.\n- **Reference**: https://pytorch.org/docs/stable/",
     "FILE_PATTERNS": "**/*.py",
-    "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build,wandb,runs,checkpoints"
+    "EXCLUDE_FILE_PATTERNS": "*.pyc,*.pyo",
+    "EXCLUDE_DIRS": "__pycache__,.venv,venv,.eggs,*.egg-info,dist,build,.pytest_cache,.mypy_cache,.ruff_cache,wandb,runs,checkpoints",
+    "GITIGNORE_ENTRIES": "__pycache__/,*.pyc,*.pyo,.venv/,venv/,.eggs/,*.egg-info/,dist/,build/,.pytest_cache/,.mypy_cache/,.ruff_cache/,wandb/,runs/,checkpoints/"
   },
   "typescript": {
     "LANG": "TypeScript",
@@ -27,7 +31,9 @@
     "LOG_PATTERNS": "**/*.log,npm-debug.log*,logs/**",
     "LANG_RULES": "- **Strict mode**: `strict: true` in tsconfig.json.\n- **No `any`**: Avoid `any` type; use `unknown` + type narrowing.\n- **Null safety**: Use optional chaining (?.) and nullish coalescing (??).\n- **Async/await**: Prefer over raw Promises.\n- **Error handling**: Always handle Promise rejections.\n- **Imports**: Use named imports, avoid default exports where possible.\n- **Reference**: https://www.typescriptlang.org/docs/",
     "FILE_PATTERNS": "**/*.ts,**/*.tsx",
-    "EXCLUDE_DIRS": "node_modules,dist,build,.next"
+    "EXCLUDE_FILE_PATTERNS": "*.tsbuildinfo",
+    "EXCLUDE_DIRS": "node_modules,dist,build,.next,coverage,.turbo,.cache",
+    "GITIGNORE_ENTRIES": "node_modules/,dist/,build/,.next/,coverage/,.turbo/,.cache/,*.tsbuildinfo"
   },
   "rust": {
     "LANG": "Rust",
@@ -37,7 +43,9 @@
     "LOG_PATTERNS": "**/*.log,logs/**",
     "LANG_RULES": "- **Error handling**: Use `Result<T, E>` and `?` operator; avoid `.unwrap()` in production code.\n- **Ownership**: Follow ownership/borrowing rules strictly.\n- **Clippy**: Code must pass `cargo clippy` without warnings.\n- **Formatting**: Must pass `cargo fmt --check`.\n- **unsafe**: Avoid `unsafe` blocks unless absolutely necessary with safety comments.\n- **Reference**: https://doc.rust-lang.org/book/",
     "FILE_PATTERNS": "**/*.rs",
-    "EXCLUDE_DIRS": "target"
+    "EXCLUDE_FILE_PATTERNS": "none",
+    "EXCLUDE_DIRS": "target",
+    "GITIGNORE_ENTRIES": "target/"
   },
   "ahk": {
     "LANG": "AutoHotkey v1.1",
@@ -47,7 +55,9 @@
     "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **v2 syntax forbidden**: No `MsgBox(\"text\")`, no `Map()`/`Array()`.\n- **Commands use comma syntax**: `MsgBox, text` NOT `MsgBox(\"text\")`.\n- **String concatenation**: Use `.` operator.\n- **Timers**: Use function timers, not label timers.\n- **GUI**: Retrieve values via `Gui, Submit`.\n- **Reference**: https://www.autohotkey.com/docs/v1/",
     "FILE_PATTERNS": "**/*.ahk",
-    "EXCLUDE_DIRS": ""
+    "EXCLUDE_FILE_PATTERNS": "none",
+    "EXCLUDE_DIRS": "none",
+    "GITIGNORE_ENTRIES": "none"
   },
   "ahk-v2": {
     "LANG": "AutoHotkey v2",
@@ -57,7 +67,9 @@
     "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **v1 syntax forbidden**: No `MsgBox text`, no legacy commands.\n- **Commands are functions**: `MsgBox(\"text\")` NOT `MsgBox, text`.\n- **`:=` for all assignments**.\n- **Globals**: Explicit `global` declaration required.\n- **Expressions**: Use parentheses in conditions.\n- **Objects**: Use `Map()` / `Array()`.\n- **Reference**: https://www.autohotkey.com/docs/v2/",
     "FILE_PATTERNS": "**/*.ahk",
-    "EXCLUDE_DIRS": ""
+    "EXCLUDE_FILE_PATTERNS": "none",
+    "EXCLUDE_DIRS": "none",
+    "GITIGNORE_ENTRIES": "none"
   },
   "cpp-msvc": {
     "LANG": "C++ (MSVC / Visual Studio)",
@@ -67,7 +79,9 @@
     "LOG_PATTERNS": "**/*.log,**/msbuild.log,Debug/**/*.log,Release/**/*.log",
     "LANG_RULES": "- **RAII**: Prefer smart pointers and deterministic cleanup.\n- **const references**: Avoid needless copies.\n- **Precompiled headers**: Respect existing `pch.h` requirements.\n- **Header guards**: Use `#pragma once`.\n- **Formatting and warnings**: Keep builds warning-clean at `/W4`.\n- **Reference**: https://learn.microsoft.com/en-us/cpp/",
     "FILE_PATTERNS": "**/*.cpp,**/*.h,**/*.inl,**/*.vcxproj,**/*.sln",
-    "EXCLUDE_DIRS": "x64,x86,Debug,Release,.vs,out,packages,ipch,ARM,ARM64,vcpkg_installed"
+    "EXCLUDE_FILE_PATTERNS": "*.VC.db,*.VC.opendb,*.suo,*.user",
+    "EXCLUDE_DIRS": "x64,x86,Debug,Release,.vs,out,packages,ipch,ARM,ARM64,vcpkg_installed",
+    "GITIGNORE_ENTRIES": ".vs/,x64/,x86/,Debug/,Release/,out/,packages/,ipch/,ARM/,ARM64/,vcpkg_installed/,*.VC.db,*.VC.opendb,*.suo,*.user"
   },
   "unity": {
     "LANG": "C# (Unity)",
@@ -77,7 +91,9 @@
     "LOG_PATTERNS": "**/*.log,Logs/**,**/Editor.log",
     "LANG_RULES": "- **SerializeField**: Use `[SerializeField] private` for inspector fields, avoid public fields.\n- **CompareTag**: Use `CompareTag()` instead of `==` for tag comparison.\n- **Cache GetComponent**: Cache in `Awake()`/`Start()`, never call per-frame in `Update()`.\n- **No Find at runtime**: Resolve references via Inspector or DI, not `Find()`/`FindObjectOfType()`.\n- **TryGetComponent**: Prefer `TryGetComponent()` over `GetComponent()` + null check.\n- **Object pooling**: Pool frequently instantiated/destroyed objects.\n- **Component design**: One responsibility per MonoBehaviour.\n- **Reference**: https://docs.unity3d.com/Manual/",
     "FILE_PATTERNS": "**/*.cs,**/*.shader,**/*.compute,**/*.hlsl",
-    "EXCLUDE_DIRS": "Library,Temp,Logs,Builds,Build,obj,.vs,Packages"
+    "EXCLUDE_FILE_PATTERNS": "**/*.meta,*.csproj,*.sln,*.user,*.pidb,*.booproj,*.svd,*.pdb,*.mdb,*.opendb,*.VC.db",
+    "EXCLUDE_DIRS": "Library,Temp,Logs,Builds,Build,obj,.vs,UserSettings,MemoryCaptures,Recordings,Assets/OpenCV+Unity,Assets/QuickOutline,Assets/TextMeshPro",
+    "GITIGNORE_ENTRIES": "Library/,Temp/,Logs/,Builds/,Build/,obj/,.vs/,UserSettings/,MemoryCaptures/,Recordings/,*.csproj,*.sln,*.user,*.pidb,*.booproj,*.svd,*.pdb,*.mdb,*.opendb,*.VC.db"
   },
   "blender": {
     "LANG": "Python (Blender)",
@@ -87,6 +103,8 @@
     "LOG_PATTERNS": "**/*.log,**/*.status,logs/**",
     "LANG_RULES": "- **Context check**: Verify `bpy.context.mode` before mode-dependent operations.\n- **bpy.data**: Access data-blocks via `bpy.data`, not `bpy.context.active_object` in batch ops.\n- **bmesh**: Use `bmesh` for mesh manipulation; always call `bm.free()` when done.\n- **mathutils**: Use `mathutils` for vector/matrix math.\n- **Addon lifecycle**: Clean up classes and handlers in `unregister()`.\n- **Naming**: Follow Blender conventions (`bl_idname`, `bl_label`, `bl_options`).\n- **Reference**: https://docs.blender.org/api/current/",
     "FILE_PATTERNS": "**/*.py",
-    "EXCLUDE_DIRS": "__pycache__,.venv,venv"
+    "EXCLUDE_FILE_PATTERNS": "*.pyc,*.pyo,*.blend1,*.blend2",
+    "EXCLUDE_DIRS": "__pycache__,.venv,venv,dist,build,.pytest_cache,.mypy_cache,.ruff_cache",
+    "GITIGNORE_ENTRIES": "__pycache__/,*.pyc,*.pyo,.venv/,venv/,dist/,build/,.pytest_cache/,.mypy_cache/,.ruff_cache/,*.blend1,*.blend2"
   }
 }
