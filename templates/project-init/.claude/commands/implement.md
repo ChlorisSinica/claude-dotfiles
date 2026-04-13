@@ -25,7 +25,9 @@ LOOP（未完了タスクがなくなるまで）:
      - import エラーが発生した場合: 依存先が別タスクで追加予定なら、そのタスクを先に実行する
   2) 毎回必ず検証コマンドを実行:
      - まず tasks.md の該当タスクの DoD コマンドを実行
-     - 次に全体検証: `{{VERIFY_CMD}}`
+     - 次に全体検証:
+       - Bash / Git Bash / Linux / macOS: `.claude/scripts/run-verify.sh`
+       - PowerShell: `.claude/scripts/run-verify.ps1`
   3) エラーが出たら **ログ自動読み取り**（後述）を実行し、原因を特定して修正→再実行
      - エラーが消えるまで次へ進まない
   4) PASS したら tasks.md の該当タスクを [x] に更新
@@ -44,33 +46,43 @@ END LOOP
 検証コマンドが非ゼロで終了した場合、以下の手順でログからエラー原因を特定する:
 
 1. **stderr/stdout を確認**（Bash ツールが自動キャプチャ）
-2. **ログファイルを検索**: 以下の各パターンを **1つずつ** Glob ツールに渡して検索する:
+2. **標準ログを確認**:
+   - `.claude/logs/verify/latest.status.json`
+   - `.claude/logs/verify/latest.log`
+3. **status JSON を確認**: `command`, `exit_code`, `started_at`, `finished_at`, `log_path` を確認
+4. **標準ログで原因が分からない場合のみ**、以下の各パターンを **1つずつ** Glob ツールに渡して検索する:
    {{LOG_PATTERNS}}
    （カンマ区切りの各パターンを個別に実行。例: まず `**/*.log`、次に `**/*.status`、次に `logs/**`）
-3. **最新ログを読む**: 見つかったファイルのうち更新日時が最新のものを Read ツールで末尾 30 行を確認
-4. **ステータスファイルを確認**: `.status` ファイルが見つかった場合は `done=`, `cancelled=`, `stage=` 行を確認
-5. エラー内容に基づいて修正し、再検証
+5. **追加ログを読む**: 見つかったファイルのうち更新日時が最新のものを Read ツールで末尾 30 行を確認
+6. **ステータスファイルを確認**: `.status` ファイルが見つかった場合は `done=`, `cancelled=`, `stage=` 行を確認
+7. 同種失敗が3回続いた場合、`.claude/context/failure_report.md` を更新する:
+   - 失敗したタスク名
+   - 直近の検証コマンド
+   - `latest.status.json` の主要フィールド
+   - `latest.log` の末尾 50 行
+8. エラー内容に基づいて修正し、再検証
 
-stderr だけでは原因が分からない場合（「失敗しました」のみ等）、ログファイルの確認は**必須**。
+stderr だけでは原因が分からない場合（「失敗しました」のみ等）、`latest.status.json` / `latest.log` の確認は**必須**。それでも不足する場合に追加ログを確認すること。
 
 ## ユーザーによる検証でエラーが発生した場合
 
 ユーザーがスクリーンショットの代わりにログを渡せるよう、以下を案内する:
 
 > エラーが発生した場合、以下のログファイルを貼り付けてください:
-> - ログファイル: `{{LOG_PATTERNS}}` に一致するファイル（特に最新のもの）
-> - ステータスファイル: `*.status`（存在する場合）
+> - 標準ログ: `.claude/logs/verify/latest.log`
+> - 標準ステータス: `.claude/logs/verify/latest.status.json`
+> - 追加ログ: `{{LOG_PATTERNS}}` に一致するファイル（必要な場合）
 > - stderr 出力: ターミナルのエラーメッセージ
 >
 > 確認コマンド（最新ログの末尾を表示）:
 > ```
 > # Git Bash / Linux / macOS:
-> find . \( -name "*.log" -o -name "*.status" \) | xargs ls -lt 2>/dev/null | head -5
-> tail -30 <最新のログファイル>
+> tail -30 .claude/logs/verify/latest.log
+> cat .claude/logs/verify/latest.status.json
 >
 > # PowerShell:
-> Get-ChildItem -Recurse -Include {{LOG_PATTERNS}} | Sort-Object LastWriteTime -Descending | Select-Object -First 5
-> Get-Content <最新のログファイル> -Tail 30
+> Get-Content .claude/logs/verify/latest.log -Tail 30
+> Get-Content .claude/logs/verify/latest.status.json
 > ```
 
 ## ルール

@@ -184,6 +184,8 @@ else:
     # Development template: SessionStart + optional PostToolUse syntax check
     lang = p.get('LANG', preset_name)
     verify_cmd = p.get('VERIFY_CMD', '')
+    verify_shell = p.get('VERIFY_SHELL', 'bash')
+    primary_log_dir = p.get('PRIMARY_LOG_DIR', '.claude/logs/verify')
     lang_rules = p.get('LANG_RULES', '')
     syntax_cmd = p.get('SYNTAX_CHECK_CMD', '')
     syntax_enabled = p.get('SYNTAX_CHECK_ENABLED', False)
@@ -305,6 +307,150 @@ if __name__ == "__main__":
     main()
 '''
         write_if_new(hook_path, hook_content, 'hooks/syntax-check.py')
+
+    # --- scripts/run-verify.sh (dev template only) ---
+    verify_sh_path = os.path.join(dest_dir, 'scripts', 'run-verify.sh')
+    verify_sh = f'''#!/usr/bin/env bash
+set -uo pipefail
+
+VERIFY_CMD={json.dumps(verify_cmd)}
+VERIFY_SHELL={json.dumps(verify_shell)}
+LOG_DIR={json.dumps(primary_log_dir)}
+
+mkdir -p "$LOG_DIR/history"
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+started_at="$(date -Iseconds)"
+log_path="$LOG_DIR/history/${{timestamp}}-verify.log"
+status_path="$LOG_DIR/history/${{timestamp}}-status.json"
+latest_log="$LOG_DIR/latest.log"
+latest_status="$LOG_DIR/latest.status.json"
+
+json_escape() {{
+    awk -v s="$1" 'BEGIN {{
+        gsub(/\\\\/,"\\\\\\\\",s)
+        gsub(/"/,"\\\\\\"",s)
+        printf "%s", s
+    }}'
+}}
+
+exit_code=0
+
+if [[ "$VERIFY_SHELL" == "powershell" ]]; then
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -NoProfile -ExecutionPolicy Bypass -Command "$VERIFY_CMD" 2>&1 | tee "$log_path"
+        exit_code=${{PIPESTATUS[0]}}
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$VERIFY_CMD" 2>&1 | tee "$log_path"
+        exit_code=${{PIPESTATUS[0]}}
+    else
+        printf '%s\\n' 'ERROR: PowerShell was not found but VERIFY_SHELL=powershell.' | tee "$log_path"
+        exit_code=127
+    fi
+else
+    bash -lc "$VERIFY_CMD" 2>&1 | tee "$log_path"
+    exit_code=${{PIPESTATUS[0]}}
+fi
+
+finished_at="$(date -Iseconds)"
+escaped_command="$(json_escape "$VERIFY_CMD")"
+escaped_log_path="$(json_escape "$log_path")"
+
+cat > "$status_path" <<EOF
+{{
+  "ok": $([[ "$exit_code" -eq 0 ]] && echo true || echo false),
+  "command": "$escaped_command",
+  "exit_code": $exit_code,
+  "started_at": "$started_at",
+  "finished_at": "$finished_at",
+  "log_path": "$escaped_log_path"
+}}
+EOF
+
+cp "$log_path" "$latest_log"
+cp "$status_path" "$latest_status"
+
+exit "$exit_code"
+'''
+    write_if_new(verify_sh_path, verify_sh, 'scripts/run-verify.sh')
+
+    # --- scripts/run-verify.ps1 (dev template only) ---
+    verify_ps1_path = os.path.join(dest_dir, 'scripts', 'run-verify.ps1')
+    verify_ps1 = f'''$ErrorActionPreference = "Continue"
+
+$verifyCommand = @'
+{verify_cmd}
+'@
+
+$logDir = "{primary_log_dir}"
+$historyDir = Join-Path $logDir "history"
+New-Item -ItemType Directory -Path $historyDir -Force | Out-Null
+
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$startedAt = (Get-Date).ToString("o")
+$logPath = Join-Path $historyDir "$timestamp-verify.log"
+$statusPath = Join-Path $historyDir "$timestamp-status.json"
+$latestLog = Join-Path $logDir "latest.log"
+$latestStatus = Join-Path $logDir "latest.status.json"
+
+try {{
+    Invoke-Expression $verifyCommand 2>&1 | Tee-Object -FilePath $logPath
+    $exitCode = if ($LASTEXITCODE -ne $null) {{ [int]$LASTEXITCODE }} else {{ 0 }}
+}} catch {{
+    $_ | Out-String | Tee-Object -FilePath $logPath -Append | Out-Host
+    $exitCode = 1
+}}
+
+$finishedAt = (Get-Date).ToString("o")
+$status = [PSCustomObject]@{{
+    ok = ($exitCode -eq 0)
+    command = $verifyCommand.Trim()
+    exit_code = $exitCode
+    started_at = $startedAt
+    finished_at = $finishedAt
+    log_path = $logPath
+}}
+
+$status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
+Copy-Item -LiteralPath $logPath -Destination $latestLog -Force
+Copy-Item -LiteralPath $statusPath -Destination $latestStatus -Force
+
+exit $exitCode
+'''
+    write_if_new(verify_ps1_path, verify_ps1, 'scripts/run-verify.ps1')
+
+    # --- context/failure_report.md (dev template only) ---
+    failure_report_path = os.path.join(dest_dir, 'context', 'failure_report.md')
+    failure_report = """# Failure Report
+
+## Summary
+
+- Task:
+- Failure pattern:
+- Attempted command:
+- Exit code:
+- Latest status file: `.claude/logs/verify/latest.status.json`
+- Latest log file: `.claude/logs/verify/latest.log`
+
+## Latest Status Snapshot
+
+```json
+{}
+```
+
+## Latest Log Tail
+
+```text
+(paste the last 50 lines from .claude/logs/verify/latest.log here)
+```
+
+## Notes
+
+- What was tried:
+- Suspected root cause:
+- Next decision needed:
+"""
+    write_if_new(failure_report_path, failure_report, 'context/failure_report.md')
 
     # --- CLAUDE.md (dev template) ---
     claude_md_path = os.path.join(dest_dir, 'CLAUDE.md')

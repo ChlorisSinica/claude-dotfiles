@@ -34,6 +34,7 @@
     {
         "defaults": 
         {
+            "bellStyle": "all",
             "font": 
             {
                 "size": 9
@@ -42,6 +43,7 @@
         "list": 
         [
             {
+                "bellStyle": "all",
                 "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
                 "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
                 "hidden": false,
@@ -73,7 +75,7 @@
                 "source": "Windows.Terminal.VisualStudio"
             },
             {
-                "bellStyle": "none",
+                "bellStyle": "all",
                 "commandline": "C:\\Program Files\\Git\\bin\\bash.exe -i -l",
                 "guid": "{629768af-7857-4590-bac5-6504603b06eb}",
                 "hidden": false,
