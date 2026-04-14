@@ -29,6 +29,15 @@
 - 明確な理由がない限り、既存の実装パターンを優先する
 - 外部製品、価格、バージョン、ベンダー挙動に依存する判断は時変情報として扱い、都度確認する
 
+## 責務分担
+
+- `setup / init / update` のような決定的処理は `.ps1` に寄せる
+- `research / plan / implement` の判断と進行は `skills` と `prompts` を主役にする
+- review は二層に分ける
+- `skills / prompts` は review の観点、停止条件、次に何をするかを定義する
+- `scripts/run-codex-*.ps1` は bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
+- review runner に運用ルールを重複実装しすぎない
+
 ## コミットメッセージ
 
 - 1行目 (subject): 英語。imperative form (e.g. `Fix authentication bug`)

@@ -658,17 +658,18 @@ function Append-Section {
     param(
         [Parameter(Mandatory = $true)]$Builder,
         [Parameter(Mandatory = $true)][string]$Title,
-        [Parameter(Mandatory = $true)][string]$Content
+        [AllowNull()]$Content
     )
 
-    if (-not $Content.Trim()) {
+    $text = if ($null -eq $Content) { "" } else { [string]$Content }
+    if (-not $text.Trim()) {
         return
     }
 
     [void]$Builder.AppendLine("---")
     [void]$Builder.AppendLine("# $Title")
     [void]$Builder.AppendLine("")
-    [void]$Builder.AppendLine($Content.TrimEnd())
+    [void]$Builder.AppendLine($text.TrimEnd())
     [void]$Builder.AppendLine("")
 }
 
@@ -752,17 +753,17 @@ $reviewText = ($reviewText | Out-String).TrimEnd()
 if (-not $reviewText) {
     throw "codex review returned empty output."
 }
-$reviewText += "`n"
+$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
+if (-not $verdictMatch.Success) {
+    $reviewText = $reviewText + "`n`nVERDICT: DISCUSS"
+    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
+    Write-Warning "VERDICT line was not found. Appended fallback VERDICT: DISCUSS."
+}
+$reviewText = $reviewText.TrimEnd() + "`n"
 
 Write-Utf8Text -Path $phaseConfig.ContextOutput -Content $reviewText
 Write-Utf8Text -Path $phaseConfig.ReviewOutput -Content $reviewText
-
-$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
-if ($verdictMatch.Success) {
-    Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
-} else {
-    Write-Warning "VERDICT line was not found."
-}
+Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
 Write-Output "Bundle: $bundlePath"
 Write-Output "Review: $($phaseConfig.ContextOutput)"
 '@
@@ -803,17 +804,18 @@ function Append-Section {
     param(
         [Parameter(Mandatory = $true)]$Builder,
         [Parameter(Mandatory = $true)][string]$Title,
-        [Parameter(Mandatory = $true)][string]$Content
+        [AllowNull()]$Content
     )
 
-    if (-not $Content.Trim()) {
+    $text = if ($null -eq $Content) { "" } else { [string]$Content }
+    if (-not $text.Trim()) {
         return
     }
 
     [void]$Builder.AppendLine("---")
     [void]$Builder.AppendLine("# $Title")
     [void]$Builder.AppendLine("")
-    [void]$Builder.AppendLine($Content.TrimEnd())
+    [void]$Builder.AppendLine($text.TrimEnd())
     [void]$Builder.AppendLine("")
 }
 
@@ -929,17 +931,17 @@ $reviewText = ($reviewText | Out-String).TrimEnd()
 if (-not $reviewText) {
     throw "codex review returned empty output."
 }
-$reviewText += "`n"
+$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
+if (-not $verdictMatch.Success) {
+    $reviewText = $reviewText + "`n`nVERDICT: CONDITIONAL"
+    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
+    Write-Warning "VERDICT line was not found. Appended fallback VERDICT: CONDITIONAL."
+}
+$reviewText = $reviewText.TrimEnd() + "`n"
 
 Write-Utf8Text -Path $contextOutput -Content $reviewText
 Write-Utf8Text -Path $reviewOutput -Content $reviewText
-
-$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
-if ($verdictMatch.Success) {
-    Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
-} else {
-    Write-Warning "VERDICT line was not found."
-}
+Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
 Write-Output "Bundle: $bundlePath"
 Write-Output "Review: $contextOutput"
 '@

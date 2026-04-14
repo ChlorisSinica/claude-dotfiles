@@ -78,6 +78,15 @@ $init-project-codex → $codex-research → $codex-plan
 - 既存 repo の更新から始めるときは `$init-project-codex` の代わりに `$update-workflow-codex`
 - 小さな修正では `$codex-research` や `$codex-review` を軽量化してよい
 
+## 責務分担
+
+- `setup / init / update` は `.ps1` を正規実装にする
+- `research / plan / implement` は repo-local の `skills + prompts` を主役にする
+- review は `skills + prompts` と `scripts/run-codex-*.ps1` の二層で扱う
+- `skills + prompts` は review 観点、停止条件、どのフェーズへ進むかを定義する
+- review runner は bundle 組み立て、`codex review -` 実行、結果保存のような機械的処理だけを担う
+- 実装都合で runner を足しても、workflow の判断ロジック本体は `skills` 側に残す
+
 ## 生成される主な資産
 
 - `.agents/AGENTS.md`
