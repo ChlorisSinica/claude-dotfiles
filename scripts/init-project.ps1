@@ -654,6 +654,47 @@ function Write-Utf8Text {
     [System.IO.File]::WriteAllText($Path, $Content, $Utf8NoBom)
 }
 
+function Read-SessionsState {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        $state = Read-Utf8TextStrict -Path $Path | ConvertFrom-Json -AsHashtable
+        if ($null -eq $state) {
+            $state = @{}
+        }
+    } else {
+        $state = @{}
+    }
+
+    if (-not $state.ContainsKey('reviews') -or $null -eq $state['reviews']) {
+        $state['reviews'] = @()
+    }
+    if (-not $state.ContainsKey('current') -or $null -eq $state['current']) {
+        $state['current'] = @{}
+    }
+    if (-not $state['current'].ContainsKey('plan_review') -or $null -eq $state['current']['plan_review']) {
+        $state['current']['plan_review'] = @{
+            phase_a_cycles = 0
+            phase_b_cycles = 0
+        }
+    }
+    if (-not $state['current'].ContainsKey('impl_review') -or $null -eq $state['current']['impl_review']) {
+        $state['current']['impl_review'] = @{
+            cycle = 0
+        }
+    }
+    return $state
+}
+
+function Write-SessionsState {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$State
+    )
+
+    Write-Utf8Text -Path $Path -Content (($State | ConvertTo-Json -Depth 20) -replace "`r?`n", "`n")
+}
+
 function Append-Section {
     param(
         [Parameter(Mandatory = $true)]$Builder,
@@ -701,6 +742,7 @@ $agentsDir = Join-Path $repoRoot ".agents"
 $contextDir = Join-Path $agentsDir "context"
 $reviewsDir = Join-Path $agentsDir "reviews"
 $promptsDir = Join-Path $agentsDir "prompts"
+$sessionsPath = Join-Path $reviewsDir "sessions.json"
 
 $planPath = Join-Path $contextDir "plan.md"
 $tasksPath = Join-Path $contextDir "tasks.md"
@@ -729,6 +771,11 @@ $phaseConfig = if ($Phase -eq "arch") {
         PreviousTitle = "Previous Detail Review"
     }
 }
+$sessionsState = Read-SessionsState -Path $sessionsPath
+$cycleKey = if ($Phase -eq "arch") { "phase_a_cycles" } else { "phase_b_cycles" }
+$sessionsState['current']['plan_review'][$cycleKey] = [int]$sessionsState['current']['plan_review'][$cycleKey] + 1
+$currentCycle = [int]$sessionsState['current']['plan_review'][$cycleKey]
+Write-SessionsState -Path $sessionsPath -State $sessionsState
 
 $planContent = Read-Utf8TextStrict -Path $planPath
 $tasksContent = Read-Utf8TextStrict -Path $tasksPath
@@ -763,9 +810,25 @@ $reviewText = $reviewText.TrimEnd() + "`n"
 
 Write-Utf8Text -Path $phaseConfig.ContextOutput -Content $reviewText
 Write-Utf8Text -Path $phaseConfig.ReviewOutput -Content $reviewText
+if ($Phase -eq "detail" -and $verdictMatch.Groups[1].Value -eq "APPROVED") {
+    $reviews = @($sessionsState['reviews'])
+    $reviews += @{
+        kind = "plan-review"
+        phase_a_cycles = [int]$sessionsState['current']['plan_review']['phase_a_cycles']
+        phase_b_cycles = [int]$sessionsState['current']['plan_review']['phase_b_cycles']
+        date = (Get-Date).ToString("o")
+        verdict = "APPROVED"
+    }
+    $sessionsState['reviews'] = $reviews
+    $sessionsState['current']['plan_review']['phase_a_cycles'] = 0
+    $sessionsState['current']['plan_review']['phase_b_cycles'] = 0
+    Write-SessionsState -Path $sessionsPath -State $sessionsState
+}
 Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
+Write-Output "Cycle: $currentCycle"
 Write-Output "Bundle: $bundlePath"
 Write-Output "Review: $($phaseConfig.ContextOutput)"
+Write-Output "Sessions: $sessionsPath"
 '@
 
 $codexImplReviewPs1Template = @'
@@ -798,6 +861,47 @@ function Write-Utf8Text {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
     [System.IO.File]::WriteAllText($Path, $Content, $Utf8NoBom)
+}
+
+function Read-SessionsState {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        $state = Read-Utf8TextStrict -Path $Path | ConvertFrom-Json -AsHashtable
+        if ($null -eq $state) {
+            $state = @{}
+        }
+    } else {
+        $state = @{}
+    }
+
+    if (-not $state.ContainsKey('reviews') -or $null -eq $state['reviews']) {
+        $state['reviews'] = @()
+    }
+    if (-not $state.ContainsKey('current') -or $null -eq $state['current']) {
+        $state['current'] = @{}
+    }
+    if (-not $state['current'].ContainsKey('plan_review') -or $null -eq $state['current']['plan_review']) {
+        $state['current']['plan_review'] = @{
+            phase_a_cycles = 0
+            phase_b_cycles = 0
+        }
+    }
+    if (-not $state['current'].ContainsKey('impl_review') -or $null -eq $state['current']['impl_review']) {
+        $state['current']['impl_review'] = @{
+            cycle = 0
+        }
+    }
+    return $state
+}
+
+function Write-SessionsState {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$State
+    )
+
+    Write-Utf8Text -Path $Path -Content (($State | ConvertTo-Json -Depth 20) -replace "`r?`n", "`n")
 }
 
 function Append-Section {
@@ -860,6 +964,7 @@ $agentsDir = Join-Path $repoRoot ".agents"
 $contextDir = Join-Path $agentsDir "context"
 $reviewsDir = Join-Path $agentsDir "reviews"
 $promptsDir = Join-Path $agentsDir "prompts"
+$sessionsPath = Join-Path $reviewsDir "sessions.json"
 
 $promptPath = Join-Path $promptsDir "codex_impl_review.md"
 $bundlePath = Join-Path $contextDir "_codex_input.tmp"
@@ -867,6 +972,11 @@ $contextOutput = Join-Path $contextDir "codex_impl_review.md"
 $reviewOutput = Join-Path $reviewsDir "impl-review.md"
 $planPath = Join-Path $contextDir "plan.md"
 $tasksPath = Join-Path $contextDir "tasks.md"
+
+$sessionsState = Read-SessionsState -Path $sessionsPath
+$sessionsState['current']['impl_review']['cycle'] = [int]$sessionsState['current']['impl_review']['cycle'] + 1
+$currentCycle = [int]$sessionsState['current']['impl_review']['cycle']
+Write-SessionsState -Path $sessionsPath -State $sessionsState
 
 $targetFiles = if ($Files.Count -gt 0) { Get-UniquePaths -InputPaths $Files } else { Get-UniquePaths -InputPaths (Get-ChangedFiles) }
 if ($targetFiles.Count -eq 0) {
@@ -941,9 +1051,23 @@ $reviewText = $reviewText.TrimEnd() + "`n"
 
 Write-Utf8Text -Path $contextOutput -Content $reviewText
 Write-Utf8Text -Path $reviewOutput -Content $reviewText
+if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
+    $reviews = @($sessionsState['reviews'])
+    $reviews += @{
+        kind = "impl-review"
+        cycle = $currentCycle
+        date = (Get-Date).ToString("o")
+        verdict = "APPROVED"
+    }
+    $sessionsState['reviews'] = $reviews
+    $sessionsState['current']['impl_review']['cycle'] = 0
+    Write-SessionsState -Path $sessionsPath -State $sessionsState
+}
 Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
+Write-Output "Cycle: $currentCycle"
 Write-Output "Bundle: $bundlePath"
 Write-Output "Review: $contextOutput"
+Write-Output "Sessions: $sessionsPath"
 '@
 
 if ($isCodexMain) {

@@ -65,6 +65,7 @@
 - `.agents/skills/` : repo-local の Codex workflow skills
 - `.agents/prompts/` : fallback prompt と手動 bridge 用 prompt
 - `.agents/reviews/` : 保存済みレビュー結果
+- `.agents/reviews/sessions.json` : review cycle の回数と APPROVED 記録
   - `plan-arch-review.md`
   - `plan-review.md`
   - `impl-review.md`

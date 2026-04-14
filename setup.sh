@@ -38,6 +38,48 @@ copy_tree() {
     done
 }
 
+run_codex_plugin_prompt_fix() {
+    local script_unix="$SCRIPT_DIR/scripts/fix-codex-plugin-prompts.ps1"
+    [[ -f "$script_unix" ]] || return 0
+
+    local runner="" script_path=""
+
+    if command -v powershell.exe >/dev/null 2>&1; then
+        runner="powershell.exe"
+        if command -v wslpath >/dev/null 2>&1; then
+            script_path="$(wslpath -w "$script_unix")"
+        elif command -v cygpath >/dev/null 2>&1; then
+            script_path="$(cygpath -w "$script_unix")"
+        else
+            script_path="$script_unix"
+        fi
+    elif command -v pwsh.exe >/dev/null 2>&1; then
+        runner="pwsh.exe"
+        if command -v wslpath >/dev/null 2>&1; then
+            script_path="$(wslpath -w "$script_unix")"
+        elif command -v cygpath >/dev/null 2>&1; then
+            script_path="$(cygpath -w "$script_unix")"
+        else
+            script_path="$script_unix"
+        fi
+    elif command -v pwsh >/dev/null 2>&1; then
+        runner="pwsh"
+        script_path="$script_unix"
+    elif command -v powershell >/dev/null 2>&1; then
+        runner="powershell"
+        script_path="$script_unix"
+    else
+        echo "  SKIP  fix-codex-plugin-prompts.ps1 (PowerShell not found)"
+        return 0
+    fi
+
+    if "$runner" -NoProfile -ExecutionPolicy Bypass -File "$script_path"; then
+        :
+    else
+        echo "  WARN  fix-codex-plugin-prompts.ps1 failed"
+    fi
+}
+
 echo "=== Claude Code dotfiles setup ==="
 echo "Source:  $SCRIPT_DIR"
 echo "Target:  $CLAUDE_DIR"
@@ -71,6 +113,10 @@ fi
 if [[ "$CODEX" == "true" ]]; then
     echo "[codex-skills]"
     copy_tree "$SCRIPT_DIR/codex/skills" "$CODEX_DIR/skills"
+    echo ""
+
+    echo "[codex-plugin-fixes]"
+    run_codex_plugin_prompt_fix
     echo ""
 fi
 

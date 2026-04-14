@@ -30,8 +30,8 @@ goto parse_args
 :end_args
 
 if "%MODE%"=="" (
-    echo Usage: %~nx0 --enable [project_dir]
-    echo        %~nx0 --disable [project_dir]
+    echo Usage: %~nx0 --enable [project_dir]   (default: current dir)
+    echo        %~nx0 --disable [project_dir]  (default: current dir)
     exit /b 1
 )
 

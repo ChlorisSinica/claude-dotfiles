@@ -41,6 +41,6 @@ echo Usage:
 echo   %~nx0 git-bash-profile [options]
 echo   %~nx0 bell [options]
 echo   %~nx0 git-bash-bell [options]
-echo   %~nx0 toast enable [project_dir] [--no-pause]
-echo   %~nx0 toast disable [project_dir] [--no-pause]
+echo   %~nx0 toast enable [project_dir] [--no-pause]   (default: current dir)
+echo   %~nx0 toast disable [project_dir] [--no-pause]  (default: current dir)
 exit /b 1

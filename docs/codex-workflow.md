@@ -72,6 +72,7 @@ $init-project-codex → $codex-research → $codex-plan
 - `$codex-impl-review` は実装変更を APPROVED まで再レビューし、中間結果を `.agents/context/codex_impl_review.md`、共有用結果を `.agents/reviews/impl-review.md` に残す
 - `$codex-review` は単発の ad-hoc review 用に残す
 - `$sonnet-dp-research-bridge` は外部調査が必要な論点だけ Claude / Sonnet に人力委譲する
+- review runner は `.agents/reviews/sessions.json` に cycle 数と APPROVED 記録を残す
 
 補足:
 
@@ -94,6 +95,7 @@ $init-project-codex → $codex-research → $codex-plan
 - `.agents/context/`
 - `.agents/context/_codex_input.tmp`
 - `.agents/reviews/`
+- `.agents/reviews/sessions.json`
 - `.agents/prompts/`
 - `.agents/templates/`
 - `.claude/settings.json`
@@ -121,6 +123,10 @@ $init-project-codex → $codex-research → $codex-plan
 ## Sonnet 連携
 
 `codex-main` は `.claude/commands` や `.claude/context` を自動展開しません。例外として、権限承認を減らすためのランタイム設定ファイル `.claude/settings.json` と `.claude/settings.local.json.bak` は生成されます。Claude / Sonnet 連携が必要なときだけ `.agents/skills/sonnet-dp-research-bridge` を使って人力で調査を委譲します。
+
+## Troubleshooting
+
+- plugin manifest の warning `ignoring interface.defaultPrompt: prompt must be at most 128 characters` が出る場合は、PowerShell から `~/.claude/scripts/fix-codex-plugin-prompts.ps1` を実行して local plugin cache を補正できる
 
 ## 関連ページ
 

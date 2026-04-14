@@ -48,6 +48,8 @@ bash ~/claude-dotfiles/setup.sh -f --codex
 - `init-project-codex` — Codex から `codex-main` scaffold を作る入口
 - `update-workflow-codex` — 既存の Codex-first workflow asset を更新する入口
 
+また、既知の plugin manifest warning を減らすために `fix-codex-plugin-prompts.ps1` を best-effort で実行します。
+
 初回導入は `setup.sh --codex` で十分です。`-f` は既存ファイルを上書き更新したいときだけ使用してください。
 
 ## グローバル設定の更新

@@ -5,11 +5,13 @@
 ## 統合入口
 
 ```bat
-windows-terminal\setup-terminal.bat git-bash-profile
-windows-terminal\setup-terminal.bat bell
-windows-terminal\setup-terminal.bat toast enable C:\path\to\project
-windows-terminal\setup-terminal.bat toast disable C:\path\to\project
+~/claude-dotfiles/windows-terminal/setup-terminal.bat git-bash-profile
+~/claude-dotfiles/windows-terminal/setup-terminal.bat bell
+~/claude-dotfiles/windows-terminal/setup-terminal.bat toast enable [project_dir]
+~/claude-dotfiles/windows-terminal/setup-terminal.bat toast disable [project_dir]
 ```
+
+`project_dir` を省略するとカレントディレクトリが対象になります。
 
 ## 個別入口
 
@@ -24,10 +26,12 @@ windows-terminal\setup-terminal.bat toast disable C:\path\to\project
 `windows-terminal/_setup-toast-notify.bat --enable [project_dir]`
 
 - 対象プロジェクトの `.claude/settings.json` に通知 hook を追加
+- `project_dir` 省略時はカレントディレクトリを使用
 
 `windows-terminal/_setup-toast-notify.bat --disable [project_dir]`
 
 - 通知用 hook だけを削除
+- `project_dir` 省略時はカレントディレクトリを使用
 
 `windows-terminal/_setup-git-bash-bell.bat`
 
