@@ -1,4 +1,4 @@
 interface:
-  display_name: "Codex Plan"
-  short_description: "Turn a request into a plan and tasks"
-  default_prompt: "Use this skill to create .agents/context/plan.md and .agents/context/tasks.md for the requested work."
+  display_name: "Codex 計画"
+  short_description: "依頼を plan と tasks に分解"
+  default_prompt: "この skill を使って依頼内容に対する .agents/context/plan.md と .agents/context/tasks.md を作成してください。"

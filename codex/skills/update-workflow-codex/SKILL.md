@@ -24,8 +24,8 @@ Refresh repo-local Codex workflow assets for a project already using the codex-m
 
 1. Determine the preset, preferring explicit user input and otherwise inferring from the repository.
 2. Run:
-   ```bash
-   bash ~/.claude/scripts/init-project.sh --codex-main <preset> --workflow-only -f
+   ```powershell
+   ~/.claude/scripts/init-project.ps1 --codex-main <preset> --workflow-only -f
    ```
 3. Report that local workspaces such as `.agents/context/` and `.agents/reviews/` were preserved.
 
@@ -37,6 +37,7 @@ Tell the user:
 - which workflow assets were refreshed
 - that `.agents/context/` and `.agents/reviews/` were preserved
 - whether `scripts/run-verify.sh` or `scripts/run-verify.ps1` were updated
+- whether `scripts/run-codex-plan-review.ps1` or `scripts/run-codex-impl-review.ps1` were updated
 
 ## Rules
 

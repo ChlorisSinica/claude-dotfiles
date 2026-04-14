@@ -1,32 +1,32 @@
-# Planning Prompt
+# 設計プロンプト
 
-Use this when turning a feature request or bug fix into an implementation plan.
+機能追加や不具合修正の依頼を、実装計画へ落とし込みたいときに使う。
 
-## Preconditions
+## 前提
 
-- `.agents/context/research.md` should exist for non-trivial work
+- 非自明な作業では `.agents/context/research.md` が先にあることが望ましい
 
-## Expected Output
+## 期待する出力
 
-Write to:
+出力先:
 
 - `.agents/context/plan.md`
 - `.agents/context/tasks.md`
-- `.agents/context/snippets.md` when pseudocode helps
+- 擬似コードが有効なら `.agents/context/snippets.md`
 
-## Plan Must Include
+## plan に含めるもの
 
-1. Objective and success criteria
-2. Non-objectives
-3. Technical approach and alternatives
-4. Affected files
-5. Data flow impact
-6. Risk and rollback notes
-7. Verification plan
-8. Discussion points for unresolved decisions
+1. 目的と成功条件
+2. 非目標
+3. 技術方針と代替案
+4. 影響ファイル
+5. データフローへの影響
+6. リスクとロールバック方針
+7. 検証計画
+8. 未解決の設計論点
 
-## Task Rules
+## タスクルール
 
-- Tasks should be independently verifiable
-- Each task should have a clear DoD
-- Do not implement during planning
+- タスクはそれぞれ独立に検証できること
+- 各タスクに明確な DoD があること
+- plan 中に実装しないこと

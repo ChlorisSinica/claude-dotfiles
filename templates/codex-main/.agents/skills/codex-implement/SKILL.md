@@ -1,24 +1,25 @@
 ---
 name: codex-implement
-description: Execute the next planned task from `.agents/context/tasks.md` with surgical edits and verification after each meaningful change. Use when planning is complete and the user wants implementation to proceed in small, verifiable steps.
+description: "`.agents/context/tasks.md` の次の未完了タスクを、局所的な変更と逐次検証で実行する。計画が固まり、実装を小さく検証可能な単位で進めたいときに使う。"
 ---
 
 # Codex Implement
 
-Implement planned work incrementally while keeping verification tight.
+計画済みの作業を、検証を密に保ちながら段階的に実装する。
 
 ## Workflow
 
-1. Read `.agents/context/tasks.md`.
-2. Pick the next unfinished task.
-3. Make the smallest safe change that satisfies that task.
-4. Run task-specific verification if present.
-5. Run the project-wide verification command from `.agents/AGENTS.md`.
-6. Only mark the task complete after verification passes.
+1. `.agents/context/tasks.md` を読む。
+2. 次の未完了タスクを選ぶ。
+3. そのタスクを満たす最小限で安全な変更を入れる。
+4. タスク固有の検証があれば実行する。
+5. `.agents/AGENTS.md` のプロジェクト全体検証を実行する。
+6. 検証が通ってからタスクを完了扱いにする。
+7. 意味のある実装単位がまとまったら `codex-impl-review` に回せるよう差分と文脈を整理する。
 
-## Rules
+## ルール
 
-- Keep edits surgical.
-- Avoid unrelated refactors.
-- When interfaces or data flow change, verify upstream and downstream impact.
-- If the same failure repeats, copy `.agents/templates/failure_report.md` to `.agents/context/failure_report.md` and fill it in.
+- 編集は局所的に保つ。
+- 無関係なリファクタを避ける。
+- インターフェースやデータフローを変えたら、上流と下流の影響を確認する。
+- 同じ失敗が繰り返される場合は `.agents/templates/failure_report.md` を `.agents/context/failure_report.md` にコピーして埋める。

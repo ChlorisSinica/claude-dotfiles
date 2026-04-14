@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 計画レビュー"
+  short_description: "plan/tasks を 2 段階でレビュー"
+  default_prompt: "この skill を使って .agents/context/plan.md と .agents/context/tasks.md を Codex review の 2 段階サイクルでレビューし、中間結果を .agents/context/codex_plan_*.md、共有用結果を .agents/reviews/ に保存してください。"

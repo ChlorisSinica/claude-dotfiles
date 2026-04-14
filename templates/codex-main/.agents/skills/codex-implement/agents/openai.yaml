@@ -1,4 +1,4 @@
 interface:
-  display_name: "Codex Implement"
-  short_description: "Execute tasks with verification"
-  default_prompt: "Use this skill to implement the next task from .agents/context/tasks.md and verify after each change."
+  display_name: "Codex 実装"
+  short_description: "tasks を実装して都度検証"
+  default_prompt: "この skill を使って .agents/context/tasks.md の次のタスクを実装し、各変更後に検証してください。"

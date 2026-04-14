@@ -48,12 +48,12 @@ echo "[commands]"
 copy_tree "$SCRIPT_DIR/commands" "$CLAUDE_DIR/commands"
 echo ""
 
-# 2. Templates (used by init-project.sh)
+# 2. Templates (used by init-project.ps1)
 echo "[templates]"
 copy_tree "$SCRIPT_DIR/templates" "$CLAUDE_DIR/templates"
 echo ""
 
-# 3. Scripts (e.g. init-project.sh)
+# 3. Scripts (e.g. init-project.ps1)
 echo "[scripts]"
 copy_tree "$SCRIPT_DIR/scripts" "$CLAUDE_DIR/scripts"
 echo ""

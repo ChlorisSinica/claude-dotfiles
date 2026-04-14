@@ -1,28 +1,28 @@
-# Review Prompt
+# レビュープロンプト
 
-Use this for Codex plan review or implementation review.
+Codex の plan review や implementation review を行うときに使う。
 
-## Inputs To Include
+## 入力に含めるもの
 
 - `.agents/AGENTS.md`
-- Relevant files from `.agents/context/`
-- Changed source files or diffs
-- Prior review output from `.agents/reviews/` when re-reviewing
+- `.agents/context/` の関連ファイル
+- 変更されたソースファイルまたは diff
+- 再レビュー時は `.agents/reviews/` の既存レビュー結果
 
-## Review Priorities
+## レビュー優先度
 
-- Correctness
-- Behavioral regressions
-- Data flow breakage
-- Missing verification
-- Hidden assumptions
+- 正しさ
+- 振る舞いの後方互換性
+- データフロー破壊
+- 検証不足
+- 隠れた前提
 
-## Output
+## 出力
 
-Save review results under `.agents/reviews/`.
-Recommended files:
+レビュー結果は `.agents/reviews/` に保存する。
+推奨ファイル:
 
 - `plan-review.md`
 - `impl-review.md`
 
-List findings first, ordered by severity.
+findings を重大度順に先頭へ並べる。

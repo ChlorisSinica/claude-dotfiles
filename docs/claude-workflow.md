@@ -52,6 +52,11 @@ bash setup.sh -f
 /init-project --codex-main python
 ```
 
+生成直後の注意:
+
+- 新しく展開された `.claude/commands/` や `.agents/skills/` は、起動中の Claude Code / Codex セッションには即時反映されないことがある
+- 使えない場合は一度セッションを開き直すか、アプリを再起動する
+
 ## `/update-workflow`
 
 - `.claude/context/` と runtime state を保持しつつ、template-managed files を更新

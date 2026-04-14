@@ -1,35 +1,34 @@
-# Research Prompt
+# 調査プロンプト
 
-Use this when you want Codex to build a deep understanding of the repository before planning or implementation.
+設計や実装の前に、Codex にリポジトリ理解を深めさせたいときに使う。
 
-## Goals
+## 目的
 
-- Read the relevant code directly
-- Respect the research scope in `.agents/AGENTS.md`
-- Explain module responsibilities and dependencies
-- Identify data flow, important state transitions, and risky assumptions
-- Separate facts from open questions
+- 関係するコードを直接読む
+- モジュールの責務と依存関係を説明する
+- データフロー、重要な状態遷移、リスクのある前提を洗い出す
+- 事実と未解決点を分ける
 
-## Expected Output
+## 期待する出力
 
-Write findings to `.agents/context/research.md`.
+結果は `.agents/context/research.md` に書く。
 
-Recommended sections:
+推奨セクション:
 
-- Overview
-- File and module responsibilities
-- Dependency relationships
-- Data flow
-- Key invariants and assumptions
-- Risks and open questions
+- 概要
+- ファイルとモジュールの責務
+- 依存関係
+- データフロー
+- 重要な前提と不変条件
+- リスクと未解決点
 
-## Rules
+## ルール
 
-- Do not infer behavior from filenames alone.
-- Read internals, not just signatures.
-- Prioritize source files that match the preset's research scope in `.agents/AGENTS.md`.
-- Skip directories whose names start with `.` or `_` unless the task explicitly targets them.
-- Treat gitignored workflow/cache artifacts as out of scope unless they are directly relevant.
-- Treat paths and file patterns listed in the preset's research exclusions as out of scope unless they are directly relevant.
-- If unsure, mark as `要確認`.
-- Use `{{VERIFY_CMD}}` if a verification step is needed.
+- ファイル名だけから挙動を推測しない。
+- シグネチャだけでなく内部実装も読む。
+- `.agents/AGENTS.md` の research scope に合うソースを優先する。
+- `.` 始まりや `_` 始まりのディレクトリは、タスクが明示的に対象にしない限り飛ばす。
+- gitignore 済みの workflow / cache artifact は、直接関係しない限り対象外とする。
+- preset の調査除外対象に入っているパスやファイルパターンは、直接関係しない限り対象外とする。
+- 不確実な点は `要確認` と書く。
+- 検証が必要なら `{{VERIFY_CMD}}` を使う。

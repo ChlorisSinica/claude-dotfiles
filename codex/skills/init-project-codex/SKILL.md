@@ -42,8 +42,8 @@ Run the codex-main project scaffold in the current repository.
    - `.unity` or `Assets/` directory -> `unity`
    - `.blend` -> `blender`
 2. Run:
-   ```bash
-   bash ~/.claude/scripts/init-project.sh --codex-main <preset>
+   ```powershell
+   ~/.claude/scripts/init-project.ps1 --codex-main <preset>
    ```
 3. If the user explicitly wants overwrite behavior, rerun with `-f`.
 4. Report the key generated assets:
@@ -52,6 +52,8 @@ Run the codex-main project scaffold in the current repository.
    - `.agents/reviews/`
    - `scripts/run-verify.sh`
    - `scripts/run-verify.ps1`
+   - `scripts/run-codex-plan-review.ps1`
+   - `scripts/run-codex-impl-review.ps1`
 
 ## Output
 
@@ -60,14 +62,16 @@ Tell the user:
 - which preset was used
 - which top-level assets were created
 - that repo-local workflow skills now live under `.agents/skills/`
+- that newly created repo-local skills may require reopening the Codex / Claude session before they become selectable
 - the next suggested entry skills:
   - `.agents/skills/codex-research`
   - `.agents/skills/codex-plan`
+  - `.agents/skills/codex-plan-review`
   - `.agents/skills/codex-implement`
-  - `.agents/skills/codex-review`
+  - `.agents/skills/codex-impl-review`
 
 ## Rules
 
 - This skill is a thin bootstrapper. Do not invent files manually when the scaffold script can generate them.
 - Prefer the codex-main scaffold over Claude-oriented templates unless the user explicitly asks for `.claude/` workflow files.
-- If `~/.claude/scripts/init-project.sh` is missing, tell the user to run `bash ~/claude-dotfiles/setup.sh -f --codex`.
+- If `~/.claude/scripts/init-project.ps1` is missing, tell the user to run `bash ~/claude-dotfiles/setup.sh -f --codex`.

@@ -1,6 +1,6 @@
-# Sonnet DP Research Input
+# Sonnet DP 調査入力
 
-Use this template when handing a discussion point to Claude / Sonnet manually.
+Claude / Sonnet に Discussion Point を手動委譲するときのテンプレート。
 
 ## Discussion Point
 

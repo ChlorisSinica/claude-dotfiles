@@ -1,30 +1,30 @@
 ---
 name: codex-review
-description: Review a plan or implementation and save findings under `.agents/reviews/`. Use when the user wants structured plan review, implementation review, re-review after fixes, or a saved review artifact that can be referenced in later iterations.
+description: "plan または実装を単発でレビューし、所見を `.agents/reviews/` に保存する。`codex-plan-review` や `codex-impl-review` ほど厳密なサイクルは不要だが、後続で参照できるレビュー記録が欲しいときに使う。"
 ---
 
 # Codex Review
 
-Run a focused review and save the result for later reuse.
+焦点を絞ったレビューを行い、結果を後で再利用できる形で保存する。
 
-## Inputs To Include
+## 入力に含めるもの
 
 - `.agents/AGENTS.md`
-- Relevant files from `.agents/context/`
-- Changed source files or diffs
-- Prior review output from `.agents/reviews/` when re-reviewing
+- `.agents/context/` の関連ファイル
+- 変更されたソースファイルまたは diff
+- 再レビュー時は `.agents/reviews/` の既存レビュー結果
 
-## Review Priorities
+## レビュー優先度
 
-- Correctness
-- Behavioral regressions
-- Data flow breakage
-- Missing verification
-- Hidden assumptions
+- 正しさ
+- 振る舞いの後方互換性
+- データフロー破壊
+- 検証不足
+- 隠れた前提
 
-## Output
+## 出力
 
-- Save outputs under `.agents/reviews/`
-- Prefer `plan-review.md` or `impl-review.md`
-- List findings first, ordered by severity
-- If there are no material issues, say so explicitly and mention residual risk briefly
+- 結果は `.agents/reviews/` に保存する
+- `plan-review.md` または `impl-review.md` を優先する
+- findings を重大度順に先頭へ並べる
+- 重大な問題がなければその旨を明記し、残るリスクを短く添える

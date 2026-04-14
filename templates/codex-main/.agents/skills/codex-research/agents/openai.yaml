@@ -1,4 +1,4 @@
 interface:
-  display_name: "Codex Research"
-  short_description: "Analyze a codebase before planning"
-  default_prompt: "Use this skill to research the current repository and record findings in .agents/context/research.md."
+  display_name: "Codex 調査"
+  short_description: "実装前にコードベースを調査"
+  default_prompt: "この skill を使って現在のリポジトリを調査し、結果を .agents/context/research.md に記録してください。"

@@ -39,7 +39,8 @@ bash ~/claude-dotfiles/setup.sh -f --codex
 - `templates/project-init/` — 開発プロジェクト初期化テンプレート
 - `templates/research-survey/` — 研究サーベイ用テンプレート
 - `templates/codex-main/` — Codex-first プロジェクト用テンプレート
-- `scripts/init-project.sh` — テンプレート展開スクリプト（`/init-project` から呼び出し）
+- `scripts/init-project.ps1` — テンプレート展開スクリプト本体（`/init-project` から呼び出し）
+- `scripts/init-project.sh` — 互換ラッパ
 - `scripts/survey-convert.sh` — Markdown → LaTeX 変換スクリプト
 
 `setup.sh --codex` を使うと、さらに `~/.codex/skills/` に以下の global skills が入ります:
@@ -62,24 +63,22 @@ bash setup.sh -f --codex  # Claude + Codex 用ファイルを上書き更新
 
 ## 使い方
 
-Claude Code では `/command`、Codex では `$skill` を入口にしてください。
+入口は 3 種類あります。
 
-新規プロジェクト:
+- Claude Code: `/command`
+- Codex: `$skill`
+- PowerShell 直実行: `~/.claude/scripts/*.ps1`
+
+PowerShell 直実行時の注意:
+
+- `~/.claude/...` はホームディレクトリ配下を指す
+- `/.claude/...` は Windows では `C:\.claude\...` 扱いになるため使わない
+- 明示パスにしたい場合は `C:\Users\CVSLab\.claude\scripts\init-project.ps1` のように書く
+
+### Claude Code
 
 ```
 /init-project python-pytorch
-```
-
-Codex 主体テンプレート:
-
-```
-$init-project-codex python
-```
-
-Claude Code から使う場合の互換入口:
-
-```
-/init-project --codex-main python
 ```
 
 既存プロジェクトで workflow files だけ更新:
@@ -88,25 +87,41 @@ Claude Code から使う場合の互換入口:
 /update-workflow python-pytorch
 ```
 
-`/update-workflow` は `.claude/context/` と `.claude/agents/sessions.json` を保持しつつ、template-managed files と generated workflow files（`.claude/CLAUDE.md`、`.claude/settings.json`、`.claude/settings.local.json`、`.claude/hooks/syntax-check.py`、`.gitignore` を含む）を更新します。
+### Codex
 
-`bash ~/.claude/scripts/init-project.sh --codex-main <preset>` は `.claude/` ではなく `.agents/` を主軸とした Codex-first scaffold を生成します。テンプレート定義自体は従来どおり `~/.claude/templates/` から配布されます。
+```
+$init-project-codex python
+```
 
-`/init-project --codex-main <preset>` は Claude Code から同じ処理を呼ぶための互換入口です。
-
-生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `scripts/run-verify.{sh,ps1}` です。
-
-既存プロジェクトの Codex workflow asset を更新する場合:
+既存プロジェクトの Codex workflow asset を更新:
 
 ```
 $update-workflow-codex python
 ```
 
-低レベルの実装コマンドを直接使う場合は、次でも同じ処理を呼べます:
+### PowerShell 直実行
 
-```bash
-bash ~/.claude/scripts/init-project.sh --codex-main python
+新規 Codex-first scaffold:
+
+```powershell
+~/.claude/scripts/init-project.ps1 --codex-main python
 ```
+
+既存 Codex-first repo の workflow 更新:
+
+```powershell
+~/.claude/scripts/init-project.ps1 --codex-main python --workflow-only -f
+```
+
+PowerShell セッション内で `~/.claude/scripts/init-project.ps1 --codex-main <preset>` を実行すると、`.agents/` を主軸とした Codex-first scaffold を生成します。ランタイム設定だけは `.claude/settings.json` と `.claude/settings.local.json.bak` に出力されます。テンプレート定義自体は従来どおり `~/.claude/templates/` から配布されます。
+
+`/init-project --codex-main <preset>` は Claude Code から同じ処理を呼ぶための互換入口です。
+
+`/update-workflow` は `.claude/context/` と `.claude/agents/sessions.json` を保持しつつ、template-managed files と generated workflow files（`.claude/CLAUDE.md`、`.claude/settings.json`、`.claude/settings.local.json`、`.claude/hooks/syntax-check.py`、`.gitignore` を含む）を更新します。
+
+生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `.claude/settings.json`, `.claude/settings.local.json.bak`, `scripts/run-verify.{sh,ps1}`, `scripts/run-codex-plan-review.ps1`, `scripts/run-codex-impl-review.ps1` です。
+
+新しく展開された repo-local commands / skills は、起動中の Claude Code / Codex セッションには即時反映されないことがあります。使えない場合は一度セッションを開き直すか、アプリを再起動してください。
 
 ### Codex-first の最短フロー
 
@@ -122,6 +137,8 @@ bash ~/claude-dotfiles/setup.sh --codex
 $init-project-codex ahk
 ```
 
+この `$init-project-codex` は Codex 上の入口名で、実際の scaffold 本体は PowerShell から呼ぶ `~/.claude/scripts/init-project.ps1 --codex-main <preset>` です。
+
 既存プロジェクトの `.agents` workflow asset を更新:
 
 ```text
@@ -132,9 +149,28 @@ $update-workflow-codex ahk
 
 - `.agents/skills/codex-research` — コードベース調査
 - `.agents/skills/codex-plan` — plan/tasks 作成
+- `.agents/skills/codex-plan-review` — plan/tasks の 2 段階レビュー
+  中間結果は `.agents/context/codex_plan_*.md`、共有用結果は `.agents/reviews/` に保存
 - `.agents/skills/codex-implement` — 実装と検証
-- `.agents/skills/codex-review` — plan / 実装レビュー
+- `.agents/skills/codex-impl-review` — 実装変更の APPROVED までの再レビュー
+  `.agents/context/_codex_input.tmp` に入力を束ね、中間結果は `.agents/context/codex_impl_review.md` に保存
+- `.agents/skills/codex-review` — 単発レビュー
 - `.agents/skills/sonnet-dp-research-bridge` — 必要時のみ Claude / Sonnet へ人力委譲
+
+Codex-first の基本フロー:
+
+```text
+$init-project-codex → $codex-research → $codex-plan
+                    → $codex-plan-review
+                    → $sonnet-dp-research-bridge（必要時のみ）
+                    → $codex-implement → $codex-impl-review
+```
+
+補足:
+
+- `$...` は Codex から呼ぶ skill / 入口名
+- 実ファイル生成は `init-project.ps1` が担当
+- `codex-main` の review 系は `.agents/skills/*` と `.agents/prompts/*` を使う運用で、Claude Code の `/...` コマンドとは別系統
 
 ## codex-plugin-cc のインストール（Claude Code から `/codex:*` を使う場合に推奨）
 
@@ -151,7 +187,7 @@ Codex CLI が未インストールの場合は `/codex:setup` が自動インス
 
 ## ワークフロー
 
-### 開発ワークフロー
+### Claude Code の開発ワークフロー
 
 ```
 /init-project → /research → /plan → /sonnet-dp-research（省略可

@@ -1,37 +1,38 @@
 ---
 name: codex-plan
-description: Turn a feature request or bug fix into a concrete implementation plan and task list in `.agents/context/plan.md` and `.agents/context/tasks.md`. Use when the user wants design before coding, when scope needs to be clarified, or when changes affect multiple files or data flow paths.
+description: "機能追加や不具合修正の依頼を、`.agents/context/plan.md` と `.agents/context/tasks.md` に落とし込む具体的な実装計画へ変換する。実装前に設計したいとき、スコープ整理が必要なとき、複数ファイルやデータフローに影響が及ぶときに使う。"
 ---
 
 # Codex Plan
 
-Convert a request into a reviewable plan before implementation starts.
+依頼内容を、実装開始前にレビュー可能な計画へ変換する。
 
 ## Workflow
 
-1. Read `.agents/context/research.md` when it exists.
-2. Define the objective and success criteria.
-3. List non-objectives and risks.
-4. Identify affected files, interfaces, and data flow.
-5. Write a task list with verifiable DoD entries.
-6. Save outputs to:
+1. `.agents/context/research.md` があれば最初に読む。
+2. 目的と成功条件を定義する。
+3. 非目標とリスクを整理する。
+4. 影響するファイル、インターフェース、データフローを洗い出す。
+5. 検証可能な DoD 付きのタスクリストを書く。
+6. 出力先:
    - `.agents/context/plan.md`
    - `.agents/context/tasks.md`
-   - `.agents/context/snippets.md` when pseudocode helps
+   - 擬似コードが有効なら `.agents/context/snippets.md`
+7. 計画が書けたら `codex-plan-review` に回せる状態まで整える。
 
-## Plan Must Cover
+## plan に必ず含めるもの
 
-- Objective and success criteria
-- Non-objectives
-- Technical approach and alternatives
-- Affected files
-- Data flow impact
-- Risk and rollback notes
-- Verification strategy
-- Discussion points for unresolved design decisions
+- 目的と成功条件
+- 非目標
+- 技術方針と代替案
+- 影響ファイル
+- データフローへの影響
+- リスクとロールバック方針
+- 検証戦略
+- 未解決の設計論点（Discussion Points）
 
-## Rules
+## ルール
 
-- Do not implement while planning.
-- Prefer concrete file paths and verifiable tasks.
-- If a design question depends on external facts, keep it in Discussion Points and hand it to the Sonnet bridge only when needed.
+- plan 中に実装しない。
+- 具体的なファイルパスと検証可能なタスクを優先する。
+- 外部事実に依存する設計論点は Discussion Points に残し、必要なときだけ Sonnet bridge に渡す。

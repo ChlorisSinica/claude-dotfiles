@@ -1,4 +1,4 @@
 interface:
-  display_name: "Codex Review"
-  short_description: "Run plan or implementation review"
-  default_prompt: "Use this skill to review plans or code changes and save results under .agents/reviews/."
+  display_name: "Codex レビュー"
+  short_description: "plan / 実装をレビュー"
+  default_prompt: "この skill を使って plan またはコード変更をレビューし、結果を .agents/reviews/ 配下へ保存してください。"

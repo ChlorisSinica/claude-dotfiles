@@ -15,9 +15,11 @@
 1. コードベースを調査し、結果を `.agents/context/research.md` に記録する
 2. 実装方針を `.agents/context/plan.md` にまとめる
 3. 検証可能なタスクへ分解して `.agents/context/tasks.md` に書く
-4. 変更は小さく安全に実装する
-5. 意味のある変更ごとに検証を実行する
-6. plan / 実装レビュー結果を `.agents/reviews/` に保存する
+4. `codex-plan-review` で plan/tasks をレビューしてから実装に進む
+5. 変更は小さく安全に実装する
+6. 意味のある変更ごとに検証を実行する
+7. 実装がまとまったら `codex-impl-review` で APPROVED まで回す
+8. review 結果を `.agents/reviews/` に保存する
 
 ## 作業ルール
 
@@ -47,10 +49,19 @@
 ## ローカル資産
 
 - `.agents/context/` : 調査、計画、タスク、snippet、failure report
+- `.agents/context/_codex_input.tmp` : `codex review -` に渡す一時入力
+- `.agents/context/codex_plan_arch_review.md` : plan review Phase A の中間結果
+- `.agents/context/codex_plan_tasks_review.md` : plan review Phase B の中間結果
+- `.agents/context/codex_impl_review.md` : impl review の中間結果
 - `.agents/skills/` : repo-local の Codex workflow skills
 - `.agents/prompts/` : fallback prompt と手動 bridge 用 prompt
 - `.agents/reviews/` : 保存済みレビュー結果
+  - `plan-arch-review.md`
+  - `plan-review.md`
+  - `impl-review.md`
 - `.agents/templates/` : 再利用用テンプレート
+- `scripts/run-codex-plan-review.ps1` : plan review runner
+- `scripts/run-codex-impl-review.ps1` : impl review runner
 
 ## Sonnet Bridge
 

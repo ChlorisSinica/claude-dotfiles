@@ -1,24 +1,24 @@
-# Sonnet DP Research Bridge
+# Sonnet DP 調査ブリッジ
 
-Use this when a discussion point needs external research that you want to run manually in Claude / Sonnet.
+Discussion Point に外部調査が必要で、その調査を Claude / Sonnet へ手動で依頼したいときに使う。
 
-## Purpose
+## 目的
 
-- Research unresolved design questions
-- Compare external options without making project-specific decisions
-- Prefer current, official, dated sources for time-sensitive claims
+- 未解決の設計論点を調査する
+- プロジェクト固有の意思決定はせずに外部選択肢を比較する
+- 時変情報では、現行の一次情報と日付を優先する
 
-## Instructions For Sonnet
+## Sonnet への指示
 
-- Treat the input as a neutral research brief
-- Do not decide what this project should do
-- Compare options and summarize trade-offs
-- For time-sensitive claims, require dated primary sources
-- Separate product surfaces when relevant
-- If only old primary sources are available, label them as stale candidates
+- 入力は中立な調査ブリーフとして扱う
+- このプロジェクトで何を採るべきかは決めない
+- 選択肢を比較し、トレードオフを要約する
+- 時変情報については日付つきの一次情報を必須にする
+- 必要に応じて製品面を分けて整理する
+- 古い一次情報しかない場合は stale candidate として明記する
 
-## Output
+## 出力
 
-Write the result to `.agents/context/sonnet-dp-research.md` after you bring it back into the repo.
+持ち帰った結果を `.agents/context/sonnet-dp-research.md` に保存する。
 
-Then use it as supporting input for `.agents/context/plan.md`.
+その後、`.agents/context/plan.md` の補助入力として使う。

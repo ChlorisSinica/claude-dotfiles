@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 実装レビュー"
+  short_description: "実装変更を APPROVED まで再レビュー"
+  default_prompt: "この skill を使って現在の変更を厳格にレビューし、APPROVED が出るまで必要な修正と再レビューを回してください。中間結果は .agents/context/codex_impl_review.md、共有用結果は .agents/reviews/impl-review.md に保存してください。"

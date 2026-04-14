@@ -1,6 +1,6 @@
-# Failure Report
+# 障害報告
 
-## Summary
+## 概要
 
 - Task:
 - Failure pattern:
@@ -9,19 +9,19 @@
 - Latest status file: `.agents/logs/verify/latest.status.json`
 - Latest log file: `.agents/logs/verify/latest.log`
 
-## Latest Status Snapshot
+## 最新ステータスのスナップショット
 
 ```json
 {}
 ```
 
-## Latest Log Tail
+## 最新ログ末尾
 
 ```text
-(paste the last 50 lines from .agents/logs/verify/latest.log here)
+(.agents/logs/verify/latest.log の末尾 50 行を貼る)
 ```
 
-## Notes
+## メモ
 
 - What was tried:
 - Suspected root cause:

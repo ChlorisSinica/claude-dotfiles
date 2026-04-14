@@ -1,4 +1,4 @@
 interface:
-  display_name: "Sonnet DP Bridge"
-  short_description: "Prepare manual Sonnet research handoff"
-  default_prompt: "Use this skill to prepare a neutral research brief for Claude/Sonnet about unresolved discussion points."
+  display_name: "Sonnet 論点ブリッジ"
+  short_description: "Sonnet 向け調査ブリーフを準備"
+  default_prompt: "この skill を使って、未解決の Discussion Point について Claude / Sonnet 向けの中立な調査ブリーフを準備してください。"

@@ -1,23 +1,23 @@
-# Implementation Prompt
+# 実装プロンプト
 
-Use this when executing tasks from `.agents/context/tasks.md`.
+`.agents/context/tasks.md` のタスクを実行するときに使う。
 
-## Working Loop
+## 実行ループ
 
-1. Pick the next unfinished task
-2. Make the smallest safe change
-3. Run the task-specific verification
-4. Run the project-wide verification command
-5. If verification fails, diagnose and retry before moving on
-6. Update task state only after verification passes
+1. 次の未完了タスクを選ぶ
+2. 最小限で安全な変更を入れる
+3. タスク固有の検証を実行する
+4. プロジェクト全体の検証コマンドを実行する
+5. 検証に失敗したら、次へ進む前に原因を切り分けて再試行する
+6. 検証が通ってからタスク状態を更新する
 
-## Rules
+## ルール
 
-- Keep edits surgical
-- Avoid unrelated cleanup
-- Check upstream and downstream impact when changing interfaces or data flow
-- If a failure repeats, copy `.agents/templates/failure_report.md` to `.agents/context/failure_report.md` and fill it in
+- 編集は局所的に保つ
+- 無関係な掃除や整理をしない
+- インターフェースやデータフローを変えたら上流と下流の影響を確認する
+- 同じ失敗が繰り返される場合は `.agents/templates/failure_report.md` を `.agents/context/failure_report.md` にコピーして埋める
 
-## Verification
+## 検証
 
-Primary command: `{{VERIFY_CMD}}`
+主コマンド: `{{VERIFY_CMD}}`

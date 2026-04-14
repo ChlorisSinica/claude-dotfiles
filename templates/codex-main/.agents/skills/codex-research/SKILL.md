@@ -1,37 +1,37 @@
 ---
 name: codex-research
-description: Analyze a repository deeply before planning or implementation and record findings in `.agents/context/research.md`. Use when starting work in an unfamiliar codebase, when preparing a design plan, or when investigating likely bug locations and data flow.
+description: "実装や設計の前にリポジトリを深く調査し、結果を `.agents/context/research.md` に記録する。初見のコードベースに入るとき、設計前に実態を固めたいとき、バグ候補やデータフローを把握したいときに使う。"
 ---
 
 # Codex Research
 
-Build a concrete understanding of the repository before making implementation decisions.
+実装判断の前に、リポジトリの理解を具体化する。
 
 ## Workflow
 
-1. Read `.agents/AGENTS.md` first and use its research scope to choose files.
-2. Read the actual files that matter for the task.
-   Skip directories whose names start with `.` or `_` unless the task explicitly targets workflow/config/cache internals there.
-3. Identify module responsibilities, dependencies, data flow, and key invariants.
-4. Separate observed facts from open questions.
-5. Write the results to `.agents/context/research.md`.
+1. 最初に `.agents/AGENTS.md` を読み、調査対象の範囲を確認する。
+2. タスクに関係する実ファイルを読む。
+   `.` 始まりや `_` 始まりのディレクトリは、workflow / config / cache 内部を明示的に調べるタスクでない限り飛ばす。
+3. モジュールの責務、依存関係、データフロー、重要な不変条件を整理する。
+4. 観測できた事実と未解決点を分ける。
+5. 結果を `.agents/context/research.md` に書く。
 
-## Expected Sections
+## 推奨セクション
 
-- Overview
-- File and module responsibilities
-- Dependency relationships
-- Data flow
-- Important assumptions and invariants
-- Risks and open questions
+- 概要
+- ファイルとモジュールの責務
+- 依存関係
+- データフロー
+- 重要な前提・不変条件
+- リスクと未解決点
 
-## Rules
+## ルール
 
-- Read internals, not just file names and signatures.
-- Prioritize source files that match the preset's `FILE_PATTERNS`.
-- Treat `.`-prefixed and `_`-prefixed directories as out of scope by default.
-- Do not spend time on paths or file patterns listed in the preset's research exclusions unless they are directly relevant to the task.
-- Do not spend time on gitignored workflow/cache artifacts unless they are directly relevant to the task.
-- Do not fabricate bugs or behavior.
-- Mark uncertainty as `要確認`.
-- Use the verification command from `.agents/AGENTS.md` only when verification materially helps understanding.
+- ファイル名やシグネチャだけでなく、内部ロジックまで読む。
+- preset の `FILE_PATTERNS` に合うソースを優先する。
+- `.` 始まりや `_` 始まりのディレクトリは既定で対象外とする。
+- preset の調査除外対象に入っているパスやファイルパターンは、タスクに直接関係しない限り読まない。
+- gitignore 済みの workflow / cache artifact も、直接関係しない限り深追いしない。
+- 根拠のない挙動やバグを作り話しない。
+- 不確実な点は `要確認` と明記する。
+- 検証が理解に本当に役立つ場合だけ `.agents/AGENTS.md` の検証コマンドを使う。
