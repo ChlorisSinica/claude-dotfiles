@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Pattern 6: 2-line braille dots - model on line 1, metrics with remaining on line 2"""
-import json, sys
+"""3-line braille dots - model / project+branch / metrics with remaining"""
+import json, os, sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
@@ -90,24 +91,40 @@ def fmt_rate(label, pct, rate_data):
     rem = f' {DIM}({fmt_time(secs)}){R}' if secs is not None else ''
     return f'{DIM}{label}{R} {col}{braille_bar(pct)}{R} {p}%{rem}'
 
+def tilde_path(p):
+    if not p:
+        return ''
+    home = Path.home().as_posix()
+    posix = Path(p).as_posix()
+    if posix.startswith(home):
+        return '~' + posix[len(home):]
+    return posix
+
 model = data.get('model', {}).get('display_name', 'Claude')
 sep   = f' {DIM}│{R} '
 
-line2_parts = []
+ws = data.get('workspace', {})
+project = tilde_path(ws.get('project_dir', ''))
+branch = ws.get('git_branch', '')
+line_proj = f'{DIM}{project}{R}'
+if branch:
+    line_proj += f' {DIM}({R}{branch}{DIM}){R}'
+
+line3_parts = []
 
 ctx_data = data.get('context_window', {})
 ctx = ctx_data.get('used_percentage')
 if ctx is not None:
-    line2_parts.append(fmt_ctx(ctx, ctx_data))
+    line3_parts.append(fmt_ctx(ctx, ctx_data))
 
 five_data = data.get('rate_limits', {}).get('five_hour', {})
 five = five_data.get('used_percentage')
 if five is not None:
-    line2_parts.append(fmt_rate('5h', five, five_data))
+    line3_parts.append(fmt_rate('5h', five, five_data))
 
 week_data = data.get('rate_limits', {}).get('seven_day', {})
 week = week_data.get('used_percentage')
 if week is not None:
-    line2_parts.append(fmt_rate('7d', week, week_data))
+    line3_parts.append(fmt_rate('7d', week, week_data))
 
-print(f'{model}\n{sep.join(line2_parts)}', end='')
+print(f'{model}\n{line_proj}\n{sep.join(line3_parts)}', end='')
