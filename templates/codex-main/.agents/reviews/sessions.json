@@ -1,0 +1,12 @@
+{
+  "reviews": [],
+  "current": {
+    "plan_review": {
+      "phase_a_cycles": 0,
+      "phase_b_cycles": 0
+    },
+    "impl_review": {
+      "cycle": 0
+    }
+  }
+}

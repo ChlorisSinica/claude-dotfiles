@@ -25,6 +25,24 @@ bash setup.sh -f --codex
 - `init-project-codex` — Codex-first scaffold の作成
 - `update-workflow-codex` — 既存 `.agents` workflow asset の更新
 
+## 仕様整理
+
+`codex-main` は次の 3 層で構成します。
+
+- global 入口
+  - `$init-project-codex`
+  - `$update-workflow-codex`
+  - 必要なら Claude Code から `/init-project --codex-main ...`
+- PowerShell 本体
+  - 正規実装は `~/.claude/scripts/init-project.ps1`
+  - 新規作成は `--codex-main <preset>`
+  - 既存 repo 更新は `--codex-main <preset> --workflow-only -f`
+- repo-local workflow
+  - 調査、計画、実装は `.agents/skills/*` と `.agents/prompts/*`
+  - review の機械処理だけ `scripts/run-codex-plan-review.ps1` と `scripts/run-codex-impl-review.ps1`
+
+要するに、`$...` は入口、`.ps1` は scaffold / update 本体、日々の開発フローは repo-local の `.agents/` で回す構成です。
+
 ## 最短フロー
 
 新規プロジェクト:

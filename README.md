@@ -71,6 +71,18 @@ bash setup.sh -f --codex  # Claude + Codex 用ファイルを上書き更新
 - Codex: `$skill`
 - PowerShell 直実行: `~/.claude/scripts/*.ps1`
 
+全体仕様は次の 3 層です。
+
+- global 入口
+  - Claude Code の `/init-project`, `/update-workflow`
+  - Codex の `$init-project-codex`, `$update-workflow-codex`
+- PowerShell 本体
+  - 正規実装は `~/.claude/scripts/init-project.ps1`
+  - 入口は最終的にこの `.ps1` を呼ぶ
+- repo-local workflow
+  - `codex-main` では `.agents/skills/`, `.agents/prompts/`, `.agents/context/`, `.agents/reviews/` を使う
+  - review の機械処理だけ `scripts/run-codex-*.ps1` が担う
+
 PowerShell 直実行時の注意:
 
 - `~/.claude/...` はホームディレクトリ配下を指す
