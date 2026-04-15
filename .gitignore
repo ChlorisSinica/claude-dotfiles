@@ -10,3 +10,17 @@ AGENTS.md
 
 # Local working directories
 tmp/
+.agents/
+.codex_tmp/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.eggs/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
