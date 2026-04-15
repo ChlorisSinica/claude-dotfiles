@@ -88,6 +88,7 @@ $init-project-codex → $codex-research → $codex-plan
 - `$codex-plan-review` は plan/tasks を 2 段階でレビューし、中間結果を `.agents/context/codex_plan_*.md`、共有用結果を `.agents/reviews/` に残す
 - `$codex-implement` は task 単位で実装し、`scripts/run-verify.*` で検証する
 - `$codex-impl-review` は実装変更を APPROVED まで再レビューし、中間結果を `.agents/context/codex_impl_review.md`、共有用結果を `.agents/reviews/impl-review.md` に残す
+- review runner の正規実行経路は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-codex-*.ps1 ...`
 - `$codex-review` は単発の ad-hoc review 用に残す
 - `$sonnet-dp-research-bridge` は外部調査が必要な論点だけ Claude / Sonnet に人力委譲する
 - review runner は `.agents/reviews/sessions.json` に cycle 数と APPROVED 記録を残す

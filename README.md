@@ -168,6 +168,7 @@ $update-workflow-codex ahk
 - `.agents/skills/codex-implement` — 実装と検証
 - `.agents/skills/codex-impl-review` — 実装変更の APPROVED までの再レビュー
   `.agents/context/_codex_input.tmp` に入力を束ね、中間結果は `.agents/context/codex_impl_review.md` に保存
+- review runner の正規実行経路は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-codex-*.ps1 ...`
 - `.agents/skills/codex-review` — 単発レビュー
 - `.agents/skills/sonnet-dp-research-bridge` — 必要時のみ Claude / Sonnet へ人力委譲
 

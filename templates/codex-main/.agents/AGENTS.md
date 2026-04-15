@@ -20,6 +20,7 @@
 6. 意味のある変更ごとに検証を実行する
 7. 実装がまとまったら `codex-impl-review` で APPROVED まで回す
 8. review 結果を `.agents/reviews/` に保存する
+9. PowerShell 系での検証は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-verify.ps1` を優先する
 
 ## 作業ルール
 
@@ -36,6 +37,7 @@
 - review は二層に分ける
 - `skills / prompts` は review の観点、停止条件、次に何をするかを定義する
 - `scripts/run-codex-*.ps1` は bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
+- review runner の実行は `pwsh -NoProfile -ExecutionPolicy Bypass -File ...` を正規経路にする
 - review runner に運用ルールを重複実装しすぎない
 
 ## コミットメッセージ
