@@ -166,6 +166,7 @@ $update-workflow-codex ahk
 - `.agents/skills/codex-plan-review` — plan/tasks の収束レビュー
   中間結果は `.agents/context/codex_plan_*.md`、共有用結果は `.agents/reviews/` に保存
 - `.agents/skills/codex-implement` — 実装と検証
+  drift audit、verify wrapper fallback、runtime の boundary-based triage を含む
 - `.agents/skills/codex-impl-review` — 実装変更の収束レビュー
   `.agents/context/_codex_input.tmp` に入力を束ね、中間結果は `.agents/context/codex_impl_review.md` に保存
 - `.agents/skills/handover-skills` — 長い cycle の handover 整理

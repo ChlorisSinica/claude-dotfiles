@@ -86,7 +86,7 @@ $init-project-codex → $codex-research → $codex-plan
 - `$codex-research` はコードベース理解を `.agents/context/research.md` に残す
 - `$codex-plan` は設計とタスクリストを `.agents/context/plan.md`, `.agents/context/tasks.md` に残す
 - `$codex-plan-review` は plan/tasks を設計判断と記述品質に分けて収束レビューし、中間結果を `.agents/context/codex_plan_*.md`、共有用結果を `.agents/reviews/` に残す
-- `$codex-implement` は task 単位で実装し、`scripts/run-verify.*` で検証する
+- `$codex-implement` は task 単位で実装し、drift audit、verify wrapper fallback、runtime の boundary-based triage を入れつつ `scripts/run-verify.*` で検証する
 - `$codex-impl-review` は実装変更を品質・整合性・recovery を切り分けながら収束レビューし、中間結果を `.agents/context/codex_impl_review.md`、共有用結果を `.agents/reviews/impl-review.md` に残す
 - `$handover-skills` は長い cycle の skill 問題点と再開手順を handover artifact に残す
 - review runner の正規実行経路は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-codex-*.ps1 ...`

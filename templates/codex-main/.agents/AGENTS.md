@@ -45,7 +45,7 @@
 
 - 1行目 (subject): 英語。imperative form (e.g. `Fix authentication bug`)
 - 2行目: 空行
-- 3行目以降 (body): 日本語可。変更理由・詳細を記述
+- 3行目以降 (body): 日本語の箇条書きを基本とする。変更理由・詳細を箇条書きで記述
 
 ## コーディングルール
 
