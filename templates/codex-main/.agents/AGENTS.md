@@ -18,9 +18,10 @@
 4. `codex-plan-review` で plan/tasks をレビューしてから実装に進む
 5. 変更は小さく安全に実装する
 6. 意味のある変更ごとに検証を実行する
-7. 実装がまとまったら `codex-impl-review` で APPROVED まで回す
-8. review 結果を `.agents/reviews/` に保存する
-9. PowerShell 系での検証は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-verify.ps1` を優先する
+7. 実装がまとまったら `codex-impl-review` で収束するまで review / 修正を回す
+8. 長い review や recovery / alignment が続いたら、必要に応じて `handover-skills` で再開手順を残す
+9. review 結果を `.agents/reviews/` に保存する
+10. PowerShell 系での検証は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-verify.ps1` を優先する
 
 ## 作業ルール
 
@@ -36,7 +37,7 @@
 - `research / plan / implement` の判断と進行は `skills` と `prompts` を主役にする
 - review は二層に分ける
 - `skills / prompts` は review の観点、停止条件、次に何をするかを定義する
-- `scripts/run-codex-*.ps1` は bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
+- `scripts/run-codex-*.ps1` は 1 実行 = 1 cycle の bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
 - review runner の実行は `pwsh -NoProfile -ExecutionPolicy Bypass -File ...` を正規経路にする
 - review runner に運用ルールを重複実装しすぎない
 
@@ -64,10 +65,14 @@
 - `.agents/context/codex_plan_arch_review.md` : plan review Phase A の中間結果
 - `.agents/context/codex_plan_tasks_review.md` : plan review Phase B の中間結果
 - `.agents/context/codex_impl_review.md` : impl review の中間結果
+- `.agents/context/implementation_gap_audit.md` : plan / implementation mismatch の監査メモ
+- `.agents/context/skill_handover_issues.md` : skill 運用上の詰まりどころ
+- `.agents/context/handover_skills_procedure.md` : 次担当者向けの再開手順
 - `.agents/skills/` : repo-local の Codex workflow skills
+- `.agents/skills/handover-skills/` : 長い cycle の handover 整理
 - `.agents/prompts/` : fallback prompt と手動 bridge 用 prompt
 - `.agents/reviews/` : 保存済みレビュー結果
-- `.agents/reviews/sessions.json` : review cycle の回数と APPROVED 記録
+- `.agents/reviews/sessions.json` : review cycle の観測値と APPROVED 記録
   - `plan-arch-review.md`
   - `plan-review.md`
   - `impl-review.md`

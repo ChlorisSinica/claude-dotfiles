@@ -69,6 +69,7 @@ Tell the user:
   - `.agents/skills/codex-plan-review`
   - `.agents/skills/codex-implement`
   - `.agents/skills/codex-impl-review`
+  - `.agents/skills/handover-skills` (for long review / recovery cycles)
 
 ## Rules
 

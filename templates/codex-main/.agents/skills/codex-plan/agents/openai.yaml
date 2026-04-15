@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex 計画"
   short_description: "依頼を plan と tasks に分解"
-  default_prompt: "この skill を使って依頼内容に対する .agents/context/plan.md と .agents/context/tasks.md を作成してください。"
+  default_prompt: "この skill を使って依頼内容に対する .agents/context/plan.md と .agents/context/tasks.md を作成してください。workflow-heavy な変更では trigger / control flow / state transition を明記し、legacy wording や obsolete な入口が残らないように整えてください。"

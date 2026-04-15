@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex 計画レビュー"
-  short_description: "plan/tasks を 2 段階でレビュー"
-  default_prompt: "この skill を使って .agents/context/plan.md と .agents/context/tasks.md を Codex review の 2 段階サイクルでレビューし、中間結果を .agents/context/codex_plan_*.md、共有用結果を .agents/reviews/ に保存してください。"
+  short_description: "plan/tasks を 2 段階で収束レビュー"
+  default_prompt: "この skill を使って .agents/context/plan.md と .agents/context/tasks.md を、設計判断と記述品質に分けてレビューしてください。固定サイクル数ではなく verdict・未解決論点・failure mode で停止判断し、workflow-heavy な plan では implementation gap baseline も残してください。中間結果は .agents/context/codex_plan_*.md、共有用結果は .agents/reviews/ に保存してください。"

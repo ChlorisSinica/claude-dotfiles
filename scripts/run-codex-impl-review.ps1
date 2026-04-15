@@ -148,118 +148,99 @@ $planPath = Join-Path $contextDir "plan.md"
 $tasksPath = Join-Path $contextDir "tasks.md"
 
 $sessionsState = Read-SessionsState -Path $sessionsPath
-$startCycle = [int]$sessionsState['current']['impl_review']['cycle']
-$maxCycles = 5
-$previousBundleHash = $null
+$currentCycle = [int]$sessionsState['current']['impl_review']['cycle'] + 1
+$sessionsState['current']['impl_review']['cycle'] = $currentCycle
+Write-SessionsState -Path $sessionsPath -State $sessionsState
 
-for ($currentCycle = $startCycle + 1; $currentCycle -le $maxCycles; $currentCycle++) {
-    $sessionsState['current']['impl_review']['cycle'] = $currentCycle
-    Write-SessionsState -Path $sessionsPath -State $sessionsState
+$targetFiles = if ($Files.Count -gt 0) { Get-UniquePaths -InputPaths $Files } else { Get-UniquePaths -InputPaths (Get-ChangedFiles) }
+if ($targetFiles.Count -eq 0) {
+    throw "No files to review."
+}
+$dependencyFiles = Get-UniquePaths -InputPaths $IncludeFiles
 
-    $targetFiles = if ($Files.Count -gt 0) { Get-UniquePaths -InputPaths $Files } else { Get-UniquePaths -InputPaths (Get-ChangedFiles) }
-    if ($targetFiles.Count -eq 0) {
-        throw "No files to review."
-    }
-    $dependencyFiles = Get-UniquePaths -InputPaths $IncludeFiles
+$taskSummary = if ($TaskDescription) {
+    $TaskDescription
+} else {
+    "Review changes in " + ($targetFiles -join ", ")
+}
 
-    $taskSummary = if ($TaskDescription) {
-        $TaskDescription
-    } else {
-        "Review changes in " + ($targetFiles -join ", ")
-    }
+$promptContent = Read-Utf8TextStrict -Path $promptPath
+$promptContent = $promptContent.Replace('$TASK_DESCRIPTION', $taskSummary)
+$promptContent = $promptContent.Replace('$FILE_LIST', ($targetFiles -join ", "))
 
-    $promptContent = Read-Utf8TextStrict -Path $promptPath
-    $promptContent = $promptContent.Replace('$TASK_DESCRIPTION', $taskSummary)
-    $promptContent = $promptContent.Replace('$FILE_LIST', ($targetFiles -join ", "))
+$builder = New-Object System.Text.StringBuilder
+Append-Section -Builder $builder -Title "Prompt" -Content $promptContent
+if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+    Append-Section -Builder $builder -Title "plan.md" -Content (Read-Utf8TextStrict -Path $planPath)
+}
+if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
+    Append-Section -Builder $builder -Title "tasks.md" -Content (Read-Utf8TextStrict -Path $tasksPath)
+}
 
-    $builder = New-Object System.Text.StringBuilder
-    Append-Section -Builder $builder -Title "Prompt" -Content $promptContent
-    if (Test-Path -LiteralPath $planPath -PathType Leaf) {
-        Append-Section -Builder $builder -Title "plan.md" -Content (Read-Utf8TextStrict -Path $planPath)
-    }
-    if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
-        Append-Section -Builder $builder -Title "tasks.md" -Content (Read-Utf8TextStrict -Path $tasksPath)
-    }
+$diffOutput = & git diff --no-ext-diff -- @($targetFiles)
+if ($LASTEXITCODE -ne 0) {
+    throw "git diff failed."
+}
+Append-Section -Builder $builder -Title "git diff" -Content (($diffOutput | Out-String).TrimEnd())
 
-    $diffOutput = & git diff --no-ext-diff -- @($targetFiles)
-    if ($LASTEXITCODE -ne 0) {
-        throw "git diff failed."
-    }
-    Append-Section -Builder $builder -Title "git diff" -Content (($diffOutput | Out-String).TrimEnd())
-
-    foreach ($relativePath in $targetFiles) {
-        $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
-        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
-            try {
-                Append-Section -Builder $builder -Title "file: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
-            } catch [System.Text.DecoderFallbackException] {
-                Append-Section -Builder $builder -Title "file: $relativePath" -Content "[binary or non-UTF8 file omitted]"
-            }
+foreach ($relativePath in $targetFiles) {
+    $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
+    if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+        try {
+            Append-Section -Builder $builder -Title "file: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
+        } catch [System.Text.DecoderFallbackException] {
+            Append-Section -Builder $builder -Title "file: $relativePath" -Content "[binary or non-UTF8 file omitted]"
         }
-    }
-
-    foreach ($relativePath in $dependencyFiles) {
-        $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
-        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
-            try {
-                Append-Section -Builder $builder -Title "dependency: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
-            } catch [System.Text.DecoderFallbackException] {
-                Append-Section -Builder $builder -Title "dependency: $relativePath" -Content "[binary or non-UTF8 file omitted]"
-            }
-        }
-    }
-
-    if ((-not $NoPrevious) -and (Test-Path -LiteralPath $contextOutput -PathType Leaf)) {
-        Append-Section -Builder $builder -Title "Previous Review" -Content (Read-Utf8TextStrict -Path $contextOutput)
-    }
-
-    $bundleText = $builder.ToString()
-    $bundleHash = Get-TextHash -Text $bundleText
-    if ($null -ne $previousBundleHash -and $bundleHash -eq $previousBundleHash) {
-        Write-Warning "Bundle is unchanged since the previous cycle. Stopping auto-loop."
-        break
-    }
-    $previousBundleHash = $bundleHash
-
-    Write-Utf8Text -Path $bundlePath -Content $bundleText
-    $reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
-    $reviewText = ($reviewText | Out-String).TrimEnd()
-    if (-not $reviewText) {
-        throw "codex review returned empty output."
-    }
-    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
-    if (-not $verdictMatch.Success) {
-        $reviewText = $reviewText + "`n`nVERDICT: CONDITIONAL"
-        $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
-        Write-Warning "VERDICT line was not found. Appended fallback VERDICT: CONDITIONAL."
-    }
-    $reviewText = $reviewText.TrimEnd() + "`n"
-
-    Write-Utf8Text -Path $contextOutput -Content $reviewText
-    Write-Utf8Text -Path $reviewOutput -Content $reviewText
-    if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
-        $reviews = @($sessionsState['reviews'])
-        $reviews += @{
-            kind = "impl-review"
-            cycle = $currentCycle
-            date = (Get-Date).ToString("o")
-            verdict = "APPROVED"
-        }
-        $sessionsState['reviews'] = $reviews
-        $sessionsState['current']['impl_review']['cycle'] = 0
-        Write-SessionsState -Path $sessionsPath -State $sessionsState
-    }
-    Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
-    Write-Output "Cycle: $currentCycle"
-    Write-Output "Bundle: $bundlePath"
-    Write-Output "Review: $contextOutput"
-    Write-Output "Sessions: $sessionsPath"
-
-    if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
-        break
-    }
-    if ($currentCycle -ge $maxCycles) {
-        Write-Warning "Reached max cycles for implementation review."
-        break
     }
 }
+
+foreach ($relativePath in $dependencyFiles) {
+    $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
+    if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+        try {
+            Append-Section -Builder $builder -Title "dependency: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
+        } catch [System.Text.DecoderFallbackException] {
+            Append-Section -Builder $builder -Title "dependency: $relativePath" -Content "[binary or non-UTF8 file omitted]"
+        }
+    }
+}
+
+if ((-not $NoPrevious) -and (Test-Path -LiteralPath $contextOutput -PathType Leaf)) {
+    Append-Section -Builder $builder -Title "Previous Review" -Content (Read-Utf8TextStrict -Path $contextOutput)
+}
+
+$bundleText = $builder.ToString()
+$null = Get-TextHash -Text $bundleText
+Write-Utf8Text -Path $bundlePath -Content $bundleText
+$reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
+$reviewText = ($reviewText | Out-String).TrimEnd()
+if (-not $reviewText) {
+    throw "codex review returned empty output."
+}
+$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
+if (-not $verdictMatch.Success) {
+    $reviewText = $reviewText + "`n`nVERDICT: CONDITIONAL"
+    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
+    Write-Warning "VERDICT line was not found. Appended fallback VERDICT: CONDITIONAL."
+}
+$reviewText = $reviewText.TrimEnd() + "`n"
+
+Write-Utf8Text -Path $contextOutput -Content $reviewText
+Write-Utf8Text -Path $reviewOutput -Content $reviewText
+if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
+    $reviews = @($sessionsState['reviews'])
+    $reviews += @{
+        kind = "impl-review"
+        cycle = $currentCycle
+        date = (Get-Date).ToString("o")
+        verdict = "APPROVED"
+    }
+    $sessionsState['reviews'] = $reviews
+    $sessionsState['current']['impl_review']['cycle'] = 0
+    Write-SessionsState -Path $sessionsPath -State $sessionsState
+}
+Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
+Write-Output "Cycle: $currentCycle"
+Write-Output "Bundle: $bundlePath"
+Write-Output "Review: $contextOutput"
+Write-Output "Sessions: $sessionsPath"

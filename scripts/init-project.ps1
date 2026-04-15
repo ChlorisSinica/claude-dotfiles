@@ -781,83 +781,64 @@ $phaseConfig = if ($Phase -eq "arch") {
 }
 $sessionsState = Read-SessionsState -Path $sessionsPath
 $cycleKey = if ($Phase -eq "arch") { "phase_a_cycles" } else { "phase_b_cycles" }
-$maxCycles = if ($Phase -eq "arch") { 2 } else { 3 }
-$startCycle = [int]$sessionsState['current']['plan_review'][$cycleKey]
-$previousBundleHash = $null
+$currentCycle = [int]$sessionsState['current']['plan_review'][$cycleKey] + 1
+$sessionsState['current']['plan_review'][$cycleKey] = $currentCycle
+Write-SessionsState -Path $sessionsPath -State $sessionsState
 
-for ($currentCycle = $startCycle + 1; $currentCycle -le $maxCycles; $currentCycle++) {
-    $sessionsState['current']['plan_review'][$cycleKey] = $currentCycle
-    Write-SessionsState -Path $sessionsPath -State $sessionsState
+$planContent = Read-Utf8TextStrict -Path $planPath
+$tasksContent = Read-Utf8TextStrict -Path $tasksPath
+$promptContent = Read-Utf8TextStrict -Path $phaseConfig.PromptPath
+$featureName = Get-FeatureName -PlanContent $planContent
+$promptContent = $promptContent.Replace('$FEATURE', $featureName)
 
-    $planContent = Read-Utf8TextStrict -Path $planPath
-    $tasksContent = Read-Utf8TextStrict -Path $tasksPath
-    $promptContent = Read-Utf8TextStrict -Path $phaseConfig.PromptPath
-    $featureName = Get-FeatureName -PlanContent $planContent
-    $promptContent = $promptContent.Replace('$FEATURE', $featureName)
-
-    $builder = New-Object System.Text.StringBuilder
-    Append-Section -Builder $builder -Title "Prompt" -Content $promptContent
-    Append-Section -Builder $builder -Title "plan.md" -Content $planContent
-    Append-Section -Builder $builder -Title "tasks.md" -Content $tasksContent
-    if (Test-Path -LiteralPath $snippetsPath -PathType Leaf) {
-        Append-Section -Builder $builder -Title "snippets.md" -Content (Read-Utf8TextStrict -Path $snippetsPath)
-    }
-    if ((-not $NoPrevious) -and (Test-Path -LiteralPath $phaseConfig.ContextOutput -PathType Leaf)) {
-        Append-Section -Builder $builder -Title $phaseConfig.PreviousTitle -Content (Read-Utf8TextStrict -Path $phaseConfig.ContextOutput)
-    }
-
-    $bundleText = $builder.ToString()
-    $bundleHash = Get-TextHash -Text $bundleText
-    if ($null -ne $previousBundleHash -and $bundleHash -eq $previousBundleHash) {
-        Write-Warning "Bundle is unchanged since the previous cycle. Stopping auto-loop."
-        break
-    }
-    $previousBundleHash = $bundleHash
-
-    Write-Utf8Text -Path $bundlePath -Content $bundleText
-    $reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
-    $reviewText = ($reviewText | Out-String).TrimEnd()
-    if (-not $reviewText) {
-        throw "codex review returned empty output."
-    }
-    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
-    if (-not $verdictMatch.Success) {
-        $reviewText = $reviewText + "`n`nVERDICT: DISCUSS"
-        $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
-        Write-Warning "VERDICT line was not found. Appended fallback VERDICT: DISCUSS."
-    }
-    $reviewText = $reviewText.TrimEnd() + "`n"
-
-    Write-Utf8Text -Path $phaseConfig.ContextOutput -Content $reviewText
-    Write-Utf8Text -Path $phaseConfig.ReviewOutput -Content $reviewText
-    if ($Phase -eq "detail" -and $verdictMatch.Groups[1].Value -eq "APPROVED") {
-        $reviews = @($sessionsState['reviews'])
-        $reviews += @{
-            kind = "plan-review"
-            phase_a_cycles = [int]$sessionsState['current']['plan_review']['phase_a_cycles']
-            phase_b_cycles = [int]$sessionsState['current']['plan_review']['phase_b_cycles']
-            date = (Get-Date).ToString("o")
-            verdict = "APPROVED"
-        }
-        $sessionsState['reviews'] = $reviews
-        $sessionsState['current']['plan_review']['phase_a_cycles'] = 0
-        $sessionsState['current']['plan_review']['phase_b_cycles'] = 0
-        Write-SessionsState -Path $sessionsPath -State $sessionsState
-    }
-    Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
-    Write-Output "Cycle: $currentCycle"
-    Write-Output "Bundle: $bundlePath"
-    Write-Output "Review: $($phaseConfig.ContextOutput)"
-    Write-Output "Sessions: $sessionsPath"
-
-    if ($verdictMatch.Groups[1].Value -eq "APPROVED" -or $verdictMatch.Groups[1].Value -eq "DISCUSS") {
-        break
-    }
-    if ($currentCycle -ge $maxCycles) {
-        Write-Warning "Reached max cycles for phase '$Phase'."
-        break
-    }
+$builder = New-Object System.Text.StringBuilder
+Append-Section -Builder $builder -Title "Prompt" -Content $promptContent
+Append-Section -Builder $builder -Title "plan.md" -Content $planContent
+Append-Section -Builder $builder -Title "tasks.md" -Content $tasksContent
+if (Test-Path -LiteralPath $snippetsPath -PathType Leaf) {
+    Append-Section -Builder $builder -Title "snippets.md" -Content (Read-Utf8TextStrict -Path $snippetsPath)
 }
+if ((-not $NoPrevious) -and (Test-Path -LiteralPath $phaseConfig.ContextOutput -PathType Leaf)) {
+    Append-Section -Builder $builder -Title $phaseConfig.PreviousTitle -Content (Read-Utf8TextStrict -Path $phaseConfig.ContextOutput)
+}
+
+$bundleText = $builder.ToString()
+$null = Get-TextHash -Text $bundleText
+Write-Utf8Text -Path $bundlePath -Content $bundleText
+$reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
+$reviewText = ($reviewText | Out-String).TrimEnd()
+if (-not $reviewText) {
+    throw "codex review returned empty output."
+}
+$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
+if (-not $verdictMatch.Success) {
+    $reviewText = $reviewText + "`n`nVERDICT: DISCUSS"
+    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
+    Write-Warning "VERDICT line was not found. Appended fallback VERDICT: DISCUSS."
+}
+$reviewText = $reviewText.TrimEnd() + "`n"
+
+Write-Utf8Text -Path $phaseConfig.ContextOutput -Content $reviewText
+Write-Utf8Text -Path $phaseConfig.ReviewOutput -Content $reviewText
+if ($Phase -eq "detail" -and $verdictMatch.Groups[1].Value -eq "APPROVED") {
+    $reviews = @($sessionsState['reviews'])
+    $reviews += @{
+        kind = "plan-review"
+        phase_a_cycles = [int]$sessionsState['current']['plan_review']['phase_a_cycles']
+        phase_b_cycles = [int]$sessionsState['current']['plan_review']['phase_b_cycles']
+        date = (Get-Date).ToString("o")
+        verdict = "APPROVED"
+    }
+    $sessionsState['reviews'] = $reviews
+    $sessionsState['current']['plan_review']['phase_a_cycles'] = 0
+    $sessionsState['current']['plan_review']['phase_b_cycles'] = 0
+    Write-SessionsState -Path $sessionsPath -State $sessionsState
+}
+Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
+Write-Output "Cycle: $currentCycle"
+Write-Output "Bundle: $bundlePath"
+Write-Output "Review: $($phaseConfig.ContextOutput)"
+Write-Output "Sessions: $sessionsPath"
 '@
 
 $codexImplReviewPs1Template = @'
@@ -1011,121 +992,102 @@ $planPath = Join-Path $contextDir "plan.md"
 $tasksPath = Join-Path $contextDir "tasks.md"
 
 $sessionsState = Read-SessionsState -Path $sessionsPath
-$startCycle = [int]$sessionsState['current']['impl_review']['cycle']
-$maxCycles = 5
-$previousBundleHash = $null
+$currentCycle = [int]$sessionsState['current']['impl_review']['cycle'] + 1
+$sessionsState['current']['impl_review']['cycle'] = $currentCycle
+Write-SessionsState -Path $sessionsPath -State $sessionsState
 
-for ($currentCycle = $startCycle + 1; $currentCycle -le $maxCycles; $currentCycle++) {
-    $sessionsState['current']['impl_review']['cycle'] = $currentCycle
-    Write-SessionsState -Path $sessionsPath -State $sessionsState
+$targetFiles = if ($Files.Count -gt 0) { Get-UniquePaths -InputPaths $Files } else { Get-UniquePaths -InputPaths (Get-ChangedFiles) }
+if ($targetFiles.Count -eq 0) {
+    throw "No files to review."
+}
+$dependencyFiles = Get-UniquePaths -InputPaths $IncludeFiles
 
-    $targetFiles = if ($Files.Count -gt 0) { Get-UniquePaths -InputPaths $Files } else { Get-UniquePaths -InputPaths (Get-ChangedFiles) }
-    if ($targetFiles.Count -eq 0) {
-        throw "No files to review."
-    }
-    $dependencyFiles = Get-UniquePaths -InputPaths $IncludeFiles
+$taskSummary = if ($TaskDescription) {
+    $TaskDescription
+} else {
+    "Review changes in " + ($targetFiles -join ", ")
+}
 
-    $taskSummary = if ($TaskDescription) {
-        $TaskDescription
-    } else {
-        "Review changes in " + ($targetFiles -join ", ")
-    }
+$promptContent = Read-Utf8TextStrict -Path $promptPath
+$promptContent = $promptContent.Replace('$TASK_DESCRIPTION', $taskSummary)
+$promptContent = $promptContent.Replace('$FILE_LIST', ($targetFiles -join ", "))
 
-    $promptContent = Read-Utf8TextStrict -Path $promptPath
-    $promptContent = $promptContent.Replace('$TASK_DESCRIPTION', $taskSummary)
-    $promptContent = $promptContent.Replace('$FILE_LIST', ($targetFiles -join ", "))
+$builder = New-Object System.Text.StringBuilder
+Append-Section -Builder $builder -Title "Prompt" -Content $promptContent
+if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+    Append-Section -Builder $builder -Title "plan.md" -Content (Read-Utf8TextStrict -Path $planPath)
+}
+if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
+    Append-Section -Builder $builder -Title "tasks.md" -Content (Read-Utf8TextStrict -Path $tasksPath)
+}
 
-    $builder = New-Object System.Text.StringBuilder
-    Append-Section -Builder $builder -Title "Prompt" -Content $promptContent
-    if (Test-Path -LiteralPath $planPath -PathType Leaf) {
-        Append-Section -Builder $builder -Title "plan.md" -Content (Read-Utf8TextStrict -Path $planPath)
-    }
-    if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
-        Append-Section -Builder $builder -Title "tasks.md" -Content (Read-Utf8TextStrict -Path $tasksPath)
-    }
+$diffOutput = & git diff --no-ext-diff -- @($targetFiles)
+if ($LASTEXITCODE -ne 0) {
+    throw "git diff failed."
+}
+Append-Section -Builder $builder -Title "git diff" -Content (($diffOutput | Out-String).TrimEnd())
 
-    $diffOutput = & git diff --no-ext-diff -- @($targetFiles)
-    if ($LASTEXITCODE -ne 0) {
-        throw "git diff failed."
-    }
-    Append-Section -Builder $builder -Title "git diff" -Content (($diffOutput | Out-String).TrimEnd())
-
-    foreach ($relativePath in $targetFiles) {
-        $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
-        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
-            try {
-                Append-Section -Builder $builder -Title "file: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
-            } catch [System.Text.DecoderFallbackException] {
-                Append-Section -Builder $builder -Title "file: $relativePath" -Content "[binary or non-UTF8 file omitted]"
-            }
+foreach ($relativePath in $targetFiles) {
+    $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
+    if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+        try {
+            Append-Section -Builder $builder -Title "file: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
+        } catch [System.Text.DecoderFallbackException] {
+            Append-Section -Builder $builder -Title "file: $relativePath" -Content "[binary or non-UTF8 file omitted]"
         }
-    }
-
-    foreach ($relativePath in $dependencyFiles) {
-        $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
-        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
-            try {
-                Append-Section -Builder $builder -Title "dependency: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
-            } catch [System.Text.DecoderFallbackException] {
-                Append-Section -Builder $builder -Title "dependency: $relativePath" -Content "[binary or non-UTF8 file omitted]"
-            }
-        }
-    }
-
-    if ((-not $NoPrevious) -and (Test-Path -LiteralPath $contextOutput -PathType Leaf)) {
-        Append-Section -Builder $builder -Title "Previous Review" -Content (Read-Utf8TextStrict -Path $contextOutput)
-    }
-
-    $bundleText = $builder.ToString()
-    $bundleHash = Get-TextHash -Text $bundleText
-    if ($null -ne $previousBundleHash -and $bundleHash -eq $previousBundleHash) {
-        Write-Warning "Bundle is unchanged since the previous cycle. Stopping auto-loop."
-        break
-    }
-    $previousBundleHash = $bundleHash
-
-    Write-Utf8Text -Path $bundlePath -Content $bundleText
-    $reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
-    $reviewText = ($reviewText | Out-String).TrimEnd()
-    if (-not $reviewText) {
-        throw "codex review returned empty output."
-    }
-    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
-    if (-not $verdictMatch.Success) {
-        $reviewText = $reviewText + "`n`nVERDICT: CONDITIONAL"
-        $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
-        Write-Warning "VERDICT line was not found. Appended fallback VERDICT: CONDITIONAL."
-    }
-    $reviewText = $reviewText.TrimEnd() + "`n"
-
-    Write-Utf8Text -Path $contextOutput -Content $reviewText
-    Write-Utf8Text -Path $reviewOutput -Content $reviewText
-    if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
-        $reviews = @($sessionsState['reviews'])
-        $reviews += @{
-            kind = "impl-review"
-            cycle = $currentCycle
-            date = (Get-Date).ToString("o")
-            verdict = "APPROVED"
-        }
-        $sessionsState['reviews'] = $reviews
-        $sessionsState['current']['impl_review']['cycle'] = 0
-        Write-SessionsState -Path $sessionsPath -State $sessionsState
-    }
-    Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
-    Write-Output "Cycle: $currentCycle"
-    Write-Output "Bundle: $bundlePath"
-    Write-Output "Review: $contextOutput"
-    Write-Output "Sessions: $sessionsPath"
-
-    if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
-        break
-    }
-    if ($currentCycle -ge $maxCycles) {
-        Write-Warning "Reached max cycles for implementation review."
-        break
     }
 }
+
+foreach ($relativePath in $dependencyFiles) {
+    $fullPath = Join-Path $repoRoot ($relativePath -replace '/', '\')
+    if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+        try {
+            Append-Section -Builder $builder -Title "dependency: $relativePath" -Content (Read-Utf8TextStrict -Path $fullPath)
+        } catch [System.Text.DecoderFallbackException] {
+            Append-Section -Builder $builder -Title "dependency: $relativePath" -Content "[binary or non-UTF8 file omitted]"
+        }
+    }
+}
+
+if ((-not $NoPrevious) -and (Test-Path -LiteralPath $contextOutput -PathType Leaf)) {
+    Append-Section -Builder $builder -Title "Previous Review" -Content (Read-Utf8TextStrict -Path $contextOutput)
+}
+
+$bundleText = $builder.ToString()
+$null = Get-TextHash -Text $bundleText
+Write-Utf8Text -Path $bundlePath -Content $bundleText
+$reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
+$reviewText = ($reviewText | Out-String).TrimEnd()
+if (-not $reviewText) {
+    throw "codex review returned empty output."
+}
+$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
+if (-not $verdictMatch.Success) {
+    $reviewText = $reviewText + "`n`nVERDICT: CONDITIONAL"
+    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|CONDITIONAL|REVISE)\s*$')
+    Write-Warning "VERDICT line was not found. Appended fallback VERDICT: CONDITIONAL."
+}
+$reviewText = $reviewText.TrimEnd() + "`n"
+
+Write-Utf8Text -Path $contextOutput -Content $reviewText
+Write-Utf8Text -Path $reviewOutput -Content $reviewText
+if ($verdictMatch.Groups[1].Value -eq "APPROVED") {
+    $reviews = @($sessionsState['reviews'])
+    $reviews += @{
+        kind = "impl-review"
+        cycle = $currentCycle
+        date = (Get-Date).ToString("o")
+        verdict = "APPROVED"
+    }
+    $sessionsState['reviews'] = $reviews
+    $sessionsState['current']['impl_review']['cycle'] = 0
+    Write-SessionsState -Path $sessionsPath -State $sessionsState
+}
+Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
+Write-Output "Cycle: $currentCycle"
+Write-Output "Bundle: $bundlePath"
+Write-Output "Review: $contextOutput"
+Write-Output "Sessions: $sessionsPath"
 '@
 
 if ($isCodexMain) {
@@ -1448,9 +1410,10 @@ if ($template -eq 'research-survey') {
 elseif ($template -eq 'codex-main') {
     Write-Output "  .agents/skills/codex-research            → コードベース調査"
     Write-Output "  .agents/skills/codex-plan                → plan/tasks 作成"
-    Write-Output "  .agents/skills/codex-plan-review         → plan/tasks 2 段階レビュー"
+    Write-Output "  .agents/skills/codex-plan-review         → plan/tasks の収束レビュー"
     Write-Output "  .agents/skills/codex-implement           → 実装と検証"
-    Write-Output "  .agents/skills/codex-impl-review         → 実装の APPROVED まで再レビュー"
+    Write-Output "  .agents/skills/codex-impl-review         → 実装の収束レビュー"
+    Write-Output "  .agents/skills/handover-skills           → 長い cycle の引き継ぎ整理"
     Write-Output "  .agents/skills/codex-review              → 単発レビュー"
     Write-Output "  .agents/skills/sonnet-dp-research-bridge → Sonnet 調査 bridge"
     Write-Output "  scripts/run-codex-plan-review.ps1        → plan review runner"

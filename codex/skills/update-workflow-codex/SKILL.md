@@ -36,6 +36,7 @@ Tell the user:
 - which preset was used
 - which workflow assets were refreshed
 - that `.agents/context/` and `.agents/reviews/` were preserved
+- whether repo-local skill set now includes `handover-skills`
 - whether `scripts/run-verify.sh` or `scripts/run-verify.ps1` were updated
 - whether `scripts/run-codex-plan-review.ps1` or `scripts/run-codex-impl-review.ps1` were updated
 

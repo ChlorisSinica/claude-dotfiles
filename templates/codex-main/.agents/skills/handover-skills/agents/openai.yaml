@@ -1,0 +1,7 @@
+interface:
+  display_name: "Handover Skills"
+  short_description: "レビュー後の引き継ぎ整理を行う"
+  default_prompt: "Use $handover-skills to capture skill issues, cycle outcomes, and the next operator procedure."
+
+policy:
+  allow_implicit_invocation: true

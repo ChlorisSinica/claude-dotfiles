@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex 実装レビュー"
-  short_description: "実装変更を APPROVED まで再レビュー"
-  default_prompt: "この skill を使って現在の変更を厳格にレビューし、APPROVED が出るまで必要な修正と再レビューを回してください。中間結果は .agents/context/codex_impl_review.md、共有用結果は .agents/reviews/impl-review.md に保存してください。"
+  short_description: "実装変更を収束するまで再レビュー"
+  default_prompt: "この skill を使って現在の変更を厳格にレビューし、品質・整合性・recovery を切り分けながら収束するまで必要な修正と再レビューを進めてください。workflow-heavy な変更では plan.md・tasks.md・implementation_gap_audit.md も review 入力に含め、固定サイクル数ではなく verdict・failure mode・handover 条件で停止判断してください。中間結果は .agents/context/codex_impl_review.md、共有用結果は .agents/reviews/impl-review.md に保存してください。"

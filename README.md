@@ -163,12 +163,14 @@ $update-workflow-codex ahk
 
 - `.agents/skills/codex-research` — コードベース調査
 - `.agents/skills/codex-plan` — plan/tasks 作成
-- `.agents/skills/codex-plan-review` — plan/tasks の 2 段階レビュー
+- `.agents/skills/codex-plan-review` — plan/tasks の収束レビュー
   中間結果は `.agents/context/codex_plan_*.md`、共有用結果は `.agents/reviews/` に保存
 - `.agents/skills/codex-implement` — 実装と検証
-- `.agents/skills/codex-impl-review` — 実装変更の APPROVED までの再レビュー
+- `.agents/skills/codex-impl-review` — 実装変更の収束レビュー
   `.agents/context/_codex_input.tmp` に入力を束ね、中間結果は `.agents/context/codex_impl_review.md` に保存
+- `.agents/skills/handover-skills` — 長い cycle の handover 整理
 - review runner の正規実行経路は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-codex-*.ps1 ...`
+- review runner は 1 実行 = 1 cycle の機械処理だけを担う
 - `.agents/skills/codex-review` — 単発レビュー
 - `.agents/skills/sonnet-dp-research-bridge` — 必要時のみ Claude / Sonnet へ人力委譲
 
