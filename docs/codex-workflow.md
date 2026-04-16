@@ -90,6 +90,7 @@ $init-project-codex → $codex-research → $codex-plan
 - `$codex-impl-review` は実装変更を品質・整合性・recovery を切り分けながら収束レビューし、中間結果を `.agents/context/codex_impl_review.md`、共有用結果を `.agents/reviews/impl-review.md` に残す
 - `$handover-skills` は長い cycle の skill 問題点と再開手順を handover artifact に残す
 - review runner の正規実行経路は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-codex-*.ps1 ...`
+- review runner の `codex review` 実行には既定で 600 秒の timeout がある。大きい review や一時的な backend 遅延で延ばしたい場合だけ `-ReviewTimeoutSec <seconds>` を追加する
 - review runner は 1 実行 = 1 cycle の bundle 作成、`codex review -` 実行、結果保存だけを担う
 - `$codex-review` は単発の ad-hoc review 用に残す
 - `$sonnet-dp-research-bridge` は外部調査が必要な論点だけ Claude / Sonnet に人力委譲する
@@ -147,7 +148,10 @@ $init-project-codex → $codex-research → $codex-plan
 
 ## Troubleshooting
 
-- plugin manifest の warning `ignoring interface.defaultPrompt: prompt must be at most 128 characters` が出る場合は、PowerShell から `~/.claude/scripts/fix-codex-plugin-prompts.ps1` を実行して local plugin cache を補正できる
+- plugin manifest の warning `ignoring interface.defaultPrompt: prompt must be at most 128 characters` は、最新の `scripts/run-codex-*-review.ps1` では review 実行前に `~/.claude/scripts/fix-codex-plugin-prompts.ps1` を自動実行して抑制する。古い project runner を使っている場合は、PowerShell から同スクリプトを手動実行するか、workflow を更新する
+- `CreateProcessAsUserW failed: 5` / `windows sandbox: runner error` が出る場合、最新の review runner は `windows.sandbox="unelevated"` で自動再試行する。古い project runner では fallback がないため、`/update-workflow` または `init-project.ps1 --codex-main <preset> --workflow-only -f` で runner を更新する
+- review 本文の `VERDICT:` は最後の非空行だけを有効扱いにする。warning や補足文で末尾が汚れた場合は fallback verdict を補って保存する
+- `plugins/* 403 Forbidden` や shell snapshot warning は本文に混ぜないように分離するが、Codex 本体側の warning なので実行時間そのものは短縮しない。小規模 review で 10 分を超える場合は warning より backend 側または sandbox 初回失敗の影響を疑う
 
 ## 関連ページ
 

@@ -2,6 +2,8 @@ param(
     [ValidateSet("arch", "detail")]
     [string]$Phase = "arch",
     [string]$Feature = "",
+    [ValidateRange(30, 7200)]
+    [int]$ReviewTimeoutSec = 600,
     [switch]$NoPrevious
 )
 
@@ -27,6 +29,359 @@ function Write-Utf8Text {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
     [System.IO.File]::WriteAllText($Path, $Content, $Utf8NoBom)
+}
+
+function Write-ReviewDiagnostics {
+    param([AllowNull()][string]$Text)
+
+    if (-not $Text -or -not $Text.Trim()) {
+        return
+    }
+
+    foreach ($line in ($Text -split "`r?`n")) {
+        if ($line.Trim()) {
+            [Console]::Error.WriteLine($line.TrimEnd())
+        }
+    }
+}
+
+function Test-IsWindowsHost {
+    return [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+}
+
+function Invoke-PluginPromptFixIfAvailable {
+    if (-not (Test-IsWindowsHost)) {
+        return
+    }
+
+    $homeRoot = if ($env:USERPROFILE) {
+        $env:USERPROFILE
+    }
+    elseif ([Environment]::GetFolderPath("UserProfile")) {
+        [Environment]::GetFolderPath("UserProfile")
+    }
+    else {
+        $HOME
+    }
+
+    $scriptPath = Join-Path $homeRoot ".claude\scripts\fix-codex-plugin-prompts.ps1"
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        & $scriptPath | Out-Null
+    }
+    catch {
+        Write-ReviewDiagnostics -Text "Plugin prompt fix script failed: $($_.Exception.Message)"
+    }
+}
+
+function Test-CodexNeedsUnelevatedFallback {
+    param([AllowNull()][string]$OutputText)
+
+    if (-not (Test-IsWindowsHost) -or -not $OutputText) {
+        return $false
+    }
+
+    foreach ($pattern in @(
+        'CreateProcessAsUserW failed',
+        'windows sandbox: runner error',
+        'windows sandbox failed',
+        'Windows sandbox setup is missing or out of date',
+        'Couldn''t set up your sandbox with Administrator permissions'
+    )) {
+        if ($OutputText -match [regex]::Escape($pattern)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Join-CommandText {
+    param(
+        [AllowNull()][string]$StdoutText,
+        [AllowNull()][string]$StderrText
+    )
+
+    $parts = New-Object System.Collections.Generic.List[string]
+    if ($StdoutText -and $StdoutText.Trim()) {
+        $null = $parts.Add($StdoutText.TrimEnd())
+    }
+    if ($StderrText -and $StderrText.Trim()) {
+        $null = $parts.Add($StderrText.TrimEnd())
+    }
+    return ($parts -join "`n")
+}
+
+function Write-ReviewAttemptDiagnostics {
+    param(
+        [AllowNull()][string]$StdoutText,
+        [AllowNull()][string]$StderrText,
+        [switch]$IncludeStdout
+    )
+
+    Write-ReviewDiagnostics -Text $StderrText
+
+    if ($IncludeStdout -and $StdoutText -and $StdoutText.Trim()) {
+        Write-ReviewDiagnostics -Text $StdoutText
+    }
+}
+
+function Stop-ProcessSafely {
+    param([Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process)
+
+    if ($Process.HasExited) {
+        return
+    }
+
+    try {
+        $Process.Kill($true)
+    }
+    catch {
+        if (-not $Process.HasExited) {
+            try {
+                $Process.Kill()
+            }
+            catch {
+                # Ignore cleanup failures and surface the timeout instead.
+            }
+        }
+    }
+}
+
+function Get-StrictReviewVerdict {
+    param(
+        [Parameter(Mandatory = $true)][string]$ReviewText,
+        [Parameter(Mandatory = $true)][string[]]$AllowedVerdicts
+    )
+
+    foreach ($line in (($ReviewText -split "`r?`n") | Select-Object -Reverse)) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed) {
+            continue
+        }
+
+        foreach ($verdict in $AllowedVerdicts) {
+            if ($trimmed -ceq "VERDICT: $verdict") {
+                return $verdict
+            }
+        }
+
+        return $null
+    }
+
+    return $null
+}
+
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param([AllowNull()][string]$Text)
+
+    if ($null -eq $Text) {
+        return "''"
+    }
+
+    return "'" + ($Text -replace "'", "''") + "'"
+}
+
+function Resolve-CodexCommand {
+    $command = Get-Command codex -ErrorAction Stop
+    while ($command.CommandType.ToString() -eq "Alias") {
+        $command = Get-Command $command.Definition -ErrorAction Stop
+    }
+    return $command
+}
+
+function Get-CodexCommandScript {
+    param([Parameter(Mandatory = $true)][string[]]$Args)
+
+    $resolved = Resolve-CodexCommand
+    $argLiterals = @($Args | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Text $_ })
+    $argsExpression = "@(" + ($argLiterals -join ", ") + ")"
+    $scriptLines = New-Object System.Collections.Generic.List[string]
+
+    switch ($resolved.CommandType.ToString()) {
+        "Function" {
+            $null = $scriptLines.Add("function codex {")
+            foreach ($line in ($resolved.ScriptBlock.ToString().TrimEnd() -split "`r?`n")) {
+                $null = $scriptLines.Add($line)
+            }
+            $null = $scriptLines.Add("}")
+        }
+        "ExternalScript" {
+            $target = ConvertTo-PowerShellSingleQuotedLiteral -Text $resolved.Path
+            $null = $scriptLines.Add('$script:CodexTarget = ' + $target)
+        }
+        default {
+            if ($resolved.Name -ne "codex" -and ($resolved.Source -or $resolved.Path)) {
+                $targetPath = if ($resolved.Source) { $resolved.Source } else { $resolved.Path }
+                $target = ConvertTo-PowerShellSingleQuotedLiteral -Text $targetPath
+                $null = $scriptLines.Add('$script:CodexTarget = ' + $target)
+            }
+        }
+    }
+
+    $null = $scriptLines.Add('$inputText = [Console]::In.ReadToEnd()')
+    $null = $scriptLines.Add('$codexArgs = ' + $argsExpression)
+    if ($scriptLines | Where-Object { $_ -like '$script:CodexTarget = *' }) {
+        $null = $scriptLines.Add('$inputText | & $script:CodexTarget @codexArgs')
+    }
+    else {
+        $null = $scriptLines.Add('$inputText | & codex @codexArgs')
+    }
+
+    return ($scriptLines -join "`n")
+}
+
+function Invoke-CodexCommand {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Args,
+        [Parameter(Mandatory = $true)][string]$InputPath,
+        [Parameter(Mandatory = $true)][int]$TimeoutSec
+    )
+
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $shellPath = try {
+        (Get-Process -Id $PID -ErrorAction Stop).Path
+    }
+    catch {
+        if (Test-IsWindowsHost) { "pwsh.exe" } else { "pwsh" }
+    }
+    $psi.FileName = $shellPath
+    $psi.WorkingDirectory = (Get-Location).Path
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+
+    $null = $psi.ArgumentList.Add("-NoProfile")
+    if (Test-IsWindowsHost) {
+        $null = $psi.ArgumentList.Add("-ExecutionPolicy")
+        $null = $psi.ArgumentList.Add("Bypass")
+    }
+    $null = $psi.ArgumentList.Add("-Command")
+    $null = $psi.ArgumentList.Add((Get-CodexCommandScript -Args $Args))
+
+    try {
+        $psi.StandardInputEncoding = $Utf8NoBom
+        $psi.StandardOutputEncoding = $Utf8NoBom
+        $psi.StandardErrorEncoding = $Utf8NoBom
+    }
+    catch {
+        # Older runtimes may not expose the encoding properties; fall back to defaults.
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $psi
+
+    try {
+        if (-not $process.Start()) {
+            throw "Failed to start codex process."
+        }
+
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        try {
+            $process.StandardInput.Write((Read-Utf8TextStrict -Path $InputPath))
+        }
+        finally {
+            $process.StandardInput.Close()
+        }
+
+        $timeoutMs = [int]([Math]::Max($TimeoutSec, 1) * 1000)
+        $exited = $process.WaitForExit($timeoutMs)
+        if (-not $exited) {
+            Stop-ProcessSafely -Process $process
+            $null = $process.WaitForExit(5000)
+            return @{
+                ExitCode = -1
+                StdoutText = $stdoutTask.GetAwaiter().GetResult().TrimEnd()
+                StderrText = $stderrTask.GetAwaiter().GetResult().TrimEnd()
+                TimedOut = $true
+            }
+        }
+
+        $process.WaitForExit()
+
+        return @{
+            ExitCode = $process.ExitCode
+            StdoutText = $stdoutTask.GetAwaiter().GetResult().TrimEnd()
+            StderrText = $stderrTask.GetAwaiter().GetResult().TrimEnd()
+            TimedOut = $false
+        }
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
+function Invoke-CodexReview {
+    param([Parameter(Mandatory = $true)][string]$InputPath)
+
+    Invoke-PluginPromptFixIfAvailable
+
+    $preferUnelevated = (Test-IsWindowsHost) -and ($env:CODEX_REVIEW_FORCE_UNELEVATED -match '^(?i:1|true|yes)$')
+    $attempts = @(
+        [ordered]@{
+            Label = "default"
+            Args = @("review", "-")
+        }
+    )
+    if (Test-IsWindowsHost) {
+        $unelevatedAttempt = [ordered]@{
+            Label = "unelevated"
+            Args = @("review", "-c", 'windows.sandbox="unelevated"', "-")
+        }
+
+        if ($preferUnelevated) {
+            $attempts = @($unelevatedAttempt) + $attempts
+        }
+        else {
+            $attempts += $unelevatedAttempt
+        }
+    }
+
+    foreach ($attempt in $attempts) {
+        $commandResult = Invoke-CodexCommand -Args $attempt.Args -InputPath $InputPath -TimeoutSec $ReviewTimeoutSec
+        $stdoutText = [string]$commandResult.StdoutText
+        $stderrText = [string]$commandResult.StderrText
+        $combinedText = Join-CommandText -StdoutText $stdoutText -StderrText $stderrText
+        $exitCode = [int]$commandResult.ExitCode
+        $timedOut = [bool]$commandResult.TimedOut
+
+        if ($exitCode -eq 0) {
+            Write-ReviewAttemptDiagnostics -StdoutText $stdoutText -StderrText $stderrText
+            if ($attempt.Label -eq "unelevated" -and -not $preferUnelevated) {
+                Write-ReviewDiagnostics -Text 'Codex elevated Windows sandbox failed; retried with windows.sandbox="unelevated". Re-run the Codex Windows sandbox setup later if you want the stronger sandbox back.'
+            }
+            return $stdoutText
+        }
+
+        if ($timedOut) {
+            if ($attempt.Label -eq "default" -and (Test-CodexNeedsUnelevatedFallback -OutputText $combinedText)) {
+                Write-ReviewAttemptDiagnostics -StdoutText $stdoutText -StderrText $stderrText -IncludeStdout
+                Write-ReviewDiagnostics -Text 'Codex elevated Windows sandbox failed before review completion; retrying with windows.sandbox="unelevated".'
+                continue
+            }
+
+            Write-ReviewAttemptDiagnostics -StdoutText $stdoutText -StderrText $stderrText -IncludeStdout
+            $detail = if ($combinedText) { $combinedText } else { "codex review exceeded the timeout of $ReviewTimeoutSec seconds." }
+            throw "codex review timed out after $ReviewTimeoutSec seconds (attempt: $($attempt.Label)).`n$detail"
+        }
+
+        if ($attempt.Label -eq "default" -and (Test-CodexNeedsUnelevatedFallback -OutputText $combinedText)) {
+            Write-ReviewAttemptDiagnostics -StdoutText $stdoutText -StderrText $stderrText -IncludeStdout
+            Write-ReviewDiagnostics -Text 'Codex elevated Windows sandbox failed; retrying with windows.sandbox="unelevated".'
+            continue
+        }
+
+        $detail = if ($combinedText) { $combinedText } else { "codex review exited with code $exitCode." }
+        throw "codex review failed (attempt: $($attempt.Label), exit $exitCode).`n$detail"
+    }
+
+    throw "codex review failed after retrying."
 }
 
 function Read-SessionsState {
@@ -180,22 +535,21 @@ if ((-not $NoPrevious) -and (Test-Path -LiteralPath $phaseConfig.ContextOutput -
 $bundleText = $builder.ToString()
 $null = Get-TextHash -Text $bundleText
 Write-Utf8Text -Path $bundlePath -Content $bundleText
-$reviewText = Get-Content -LiteralPath $bundlePath -Encoding UTF8 -Raw | codex review -
-$reviewText = ($reviewText | Out-String).TrimEnd()
+$reviewText = Invoke-CodexReview -InputPath $bundlePath
 if (-not $reviewText) {
     throw "codex review returned empty output."
 }
-$verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
-if (-not $verdictMatch.Success) {
+$verdict = Get-StrictReviewVerdict -ReviewText $reviewText -AllowedVerdicts @("APPROVED", "DISCUSS", "REVISE")
+if (-not $verdict) {
     $reviewText = $reviewText + "`n`nVERDICT: DISCUSS"
-    $verdictMatch = [regex]::Match($reviewText, '(?m)^VERDICT:\s*(APPROVED|DISCUSS|REVISE)\s*$')
-    Write-Warning "VERDICT line was not found. Appended fallback VERDICT: DISCUSS."
+    $verdict = Get-StrictReviewVerdict -ReviewText $reviewText -AllowedVerdicts @("APPROVED", "DISCUSS", "REVISE")
+    Write-ReviewDiagnostics -Text "Final non-empty line was not a valid VERDICT. Appended fallback VERDICT: DISCUSS."
 }
 $reviewText = $reviewText.TrimEnd() + "`n"
 
 Write-Utf8Text -Path $phaseConfig.ContextOutput -Content $reviewText
 Write-Utf8Text -Path $phaseConfig.ReviewOutput -Content $reviewText
-if ($Phase -eq "detail" -and $verdictMatch.Groups[1].Value -eq "APPROVED") {
+if ($Phase -eq "detail" -and $verdict -eq "APPROVED") {
     $reviews = @($sessionsState['reviews'])
     $reviews += @{
         kind = "plan-review"
@@ -209,7 +563,7 @@ if ($Phase -eq "detail" -and $verdictMatch.Groups[1].Value -eq "APPROVED") {
     $sessionsState['current']['plan_review']['phase_b_cycles'] = 0
     Write-SessionsState -Path $sessionsPath -State $sessionsState
 }
-Write-Output "VERDICT: $($verdictMatch.Groups[1].Value)"
+Write-Output "VERDICT: $verdict"
 Write-Output "Cycle: $currentCycle"
 Write-Output "Bundle: $bundlePath"
 Write-Output "Review: $($phaseConfig.ContextOutput)"

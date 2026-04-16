@@ -36,7 +36,8 @@ Your only goal is to ensure the code is correct, safe, maintainable, and follows
 
 ### 出力フォーマット
 
-末尾に必ず以下のいずれかを単独行で出力すること:
+末尾に必ず以下のいずれかを単独行で出力すること。
+最後の非空行を `VERDICT: ...` にし、その後ろに説明・注釈・コードフェンスを一切追加しないこと:
 
 ```
 VERDICT: APPROVED

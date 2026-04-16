@@ -171,6 +171,7 @@ $update-workflow-codex ahk
   `.agents/context/_codex_input.tmp` に入力を束ね、中間結果は `.agents/context/codex_impl_review.md` に保存
 - `.agents/skills/handover-skills` — 長い cycle の handover 整理
 - review runner の正規実行経路は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-codex-*.ps1 ...`
+- review runner の `codex review` 実行には既定で 600 秒の timeout がある。長い review だけ `-ReviewTimeoutSec <seconds>` で延長できる
 - review runner は 1 実行 = 1 cycle の機械処理だけを担う
 - `.agents/skills/codex-review` — 単発レビュー
 - `.agents/skills/sonnet-dp-research-bridge` — 必要時のみ Claude / Sonnet へ人力委譲
@@ -189,6 +190,7 @@ $init-project-codex → $codex-research → $codex-plan
 - `$...` は Codex から呼ぶ skill / 入口名
 - 実ファイル生成は `init-project.ps1` が担当
 - `codex-main` の review 系は `.agents/skills/*` と `.agents/prompts/*` を使う運用で、Claude Code の `/...` コマンドとは別系統
+- Windows で `codex-plan-review` / `codex-impl-review` の runner を更新したい場合は `init-project.ps1 --codex-main <preset> --workflow-only -f` か `/update-workflow` を使うと、plugin prompt warning の自動補正、`windows.sandbox="unelevated"` への fallback、`-ReviewTimeoutSec` 対応、末尾 `VERDICT:` の厳格判定が反映される
 
 ## codex-plugin-cc のインストール（Claude Code から `/codex:*` を使う場合に推奨）
 
