@@ -29,6 +29,7 @@ PRE_MANIFEST_RETIREMENTS: dict[str, set[Path]] = {
         Path("run-verify.ps1"),
         Path("run-verify.sh"),
         Path("fix-codex-plugin-prompts.ps1"),
+        Path("survey-convert.sh"),
     },
     "codex-skills": set(),
 }

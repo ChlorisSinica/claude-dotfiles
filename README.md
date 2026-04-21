@@ -41,7 +41,7 @@ python ~/claude-dotfiles/scripts/setup.py -f --codex
 - `templates/codex-main/` — Codex-first プロジェクト用テンプレート
 - `scripts/init-project.py` — `codex-main` のテンプレート展開スクリプト本体
 - `scripts/setup.py` — Python ベースの install / sync エントリポイント
-- `scripts/survey-convert.sh` — Markdown → LaTeX 変換スクリプト
+- `scripts/survey-convert.py` — Markdown → LaTeX 変換スクリプト
 
 `setup.py --codex` を使うと、さらに `~/.codex/skills/` に以下の global skills が入ります:
 

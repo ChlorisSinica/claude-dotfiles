@@ -38,9 +38,11 @@ bibcure が利用不可の場合はスキップ。
 
 ### 4. Pandoc 変換
 
-```bash
-bash ~/.claude/scripts/survey-convert.sh .claude/context/draft.md output/survey.tex
+```text
+<python-launcher> ~/.claude/scripts/survey-convert.py .claude/context/draft.md output/survey.tex
 ```
+
+`<python-launcher>` には `python`, `python3`, `py -3` など，環境で使える Python 3.11+ launcher を入れる．
 
 Pandoc が利用不可の場合はインストール手順を案内:
 - Windows: `winget install --id JohnMacFarlane.Pandoc`
