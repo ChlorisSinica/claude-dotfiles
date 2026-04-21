@@ -135,7 +135,7 @@ $update-workflow-codex python
 
 `/update-workflow` は `.claude/context/` と `.claude/agents/sessions.json` を保持しつつ、template-managed files と generated workflow files（`.claude/CLAUDE.md`、`.claude/settings.json`、`.claude/settings.local.json`、`.claude/hooks/syntax-check.py`、`.gitignore` を含む）を更新します。
 
-生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `.claude/settings.json`, `.claude/settings.local.json.bak`, `scripts/run-verify.py`, `scripts/run-codex-plan-review.py`, `scripts/run-codex-impl-review.py`, `scripts/run-codex-impl-cycle.py` です。
+生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `.claude/settings.json`, `.claude/settings.local.json.bak`, `scripts/run-verify.py`, `scripts/run-codex-plan-review.py`, `scripts/run-codex-impl-review.py`, `scripts/run-codex-impl-cycle.py`, `scripts/fix_codex_plugin_prompts.py` です。
 
 新しく展開された repo-local commands / skills は、起動中の Claude Code / Codex セッションには即時反映されないことがあります。使えない場合は一度セッションを開き直すか、アプリを再起動してください。
 
@@ -171,9 +171,10 @@ $update-workflow-codex ahk
   drift audit、verify wrapper fallback、runtime の boundary-based triage を含む
 - `.agents/skills/codex-impl-review` — 実装変更の収束レビュー
   `.agents/context/_codex_input.tmp` に入力を束ね、中間結果は `.agents/context/codex_impl_review.md` に保存
+- `.agents/skills/codex-fkin-impl-cycle` — task-slice 実装と phase-aware review cycle の自動周回（alignment → verification → quality を Python runner で収束）
 - `.agents/skills/handover-skills` — 長い cycle の handover 整理
 - review runner の正規実行経路は `<python-launcher> scripts/run-codex-*.py ...`
-- review runner の `codex review` 実行には既定で 600 秒の timeout がある。長い review だけ `-ReviewTimeoutSec <seconds>` で延長できる
+- review runner の `codex review` 実行には既定で 600 秒の timeout がある。長い review だけ `--review-timeout-sec <seconds>` で延長できる
 - review runner は 1 実行 = 1 cycle の機械処理だけを担う
 - `.agents/skills/codex-review` — 単発レビュー
 - `.agents/skills/sonnet-dp-research-bridge` — 必要時のみ Claude / Sonnet へ人力委譲
