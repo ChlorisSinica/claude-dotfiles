@@ -42,18 +42,19 @@ Run the codex-main project scaffold in the current repository.
    - `.unity` or `Assets/` directory -> `unity`
    - `.blend` -> `blender`
 2. Run:
-   ```powershell
-   ~/.claude/scripts/init-project.ps1 --codex-main <preset>
+   ```text
+   <python-launcher> ~/.claude/scripts/init-project.py --codex-main <preset>
    ```
+   Use a Python 3.11+ launcher such as `python`, `python3`, or `py -3`.
 3. If the user explicitly wants overwrite behavior, rerun with `-f`.
 4. Report the key generated assets:
    - `.agents/skills/`
    - `.agents/context/`
    - `.agents/reviews/`
-   - `scripts/run-verify.sh`
-   - `scripts/run-verify.ps1`
-   - `scripts/run-codex-plan-review.ps1`
-   - `scripts/run-codex-impl-review.ps1`
+   - `scripts/run-verify.py`
+   - `scripts/run-codex-plan-review.py`
+   - `scripts/run-codex-impl-review.py`
+   - `scripts/run-codex-impl-cycle.py`
 
 ## Output
 
@@ -75,4 +76,4 @@ Tell the user:
 
 - This skill is a thin bootstrapper. Do not invent files manually when the scaffold script can generate them.
 - Prefer the codex-main scaffold over Claude-oriented templates unless the user explicitly asks for `.claude/` workflow files.
-- If `~/.claude/scripts/init-project.ps1` is missing, tell the user to run `bash ~/claude-dotfiles/setup.sh -f --codex`.
+- If `~/.claude/scripts/init-project.py` is missing, tell the user to refresh the installed workflow assets before retrying.

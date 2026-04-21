@@ -24,9 +24,10 @@ Refresh repo-local Codex workflow assets for a project already using the codex-m
 
 1. Determine the preset, preferring explicit user input and otherwise inferring from the repository.
 2. Run:
-   ```powershell
-   ~/.claude/scripts/init-project.ps1 --codex-main <preset> --workflow-only -f
+   ```text
+   <python-launcher> ~/.claude/scripts/init-project.py --codex-main <preset> --workflow-only -f
    ```
+   Use a Python 3.11+ launcher such as `python`, `python3`, or `py -3`.
 3. Report that local workspaces such as `.agents/context/` and `.agents/reviews/` were preserved.
 
 ## Output
@@ -37,11 +38,11 @@ Tell the user:
 - which workflow assets were refreshed
 - that `.agents/context/` and `.agents/reviews/` were preserved
 - whether repo-local skill set now includes `handover-skills`
-- whether `scripts/run-verify.sh` or `scripts/run-verify.ps1` were updated
-- whether `scripts/run-codex-plan-review.ps1` or `scripts/run-codex-impl-review.ps1` were updated
+- whether `scripts/run-verify.py` was updated
+- whether `scripts/run-codex-plan-review.py` or `scripts/run-codex-impl-review.py` were updated
 
 ## Rules
 
 - Do not remove `.agents/context/` or `.agents/reviews/` during workflow refresh.
 - Prefer workflow refresh over a full overwrite when the user is already mid-project.
-- If the bootstrap script is missing, direct the user to `bash ~/claude-dotfiles/setup.sh -f --codex`.
+- If the bootstrap script is missing, direct the user to refresh the installed workflow assets before retrying.

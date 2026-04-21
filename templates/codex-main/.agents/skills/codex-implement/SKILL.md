@@ -16,7 +16,7 @@ description: "`.agents/context/tasks.md` の次の未完了タスクを、局所
 5. 変更が helper return、worker/UI payload、file/sync artifact、startup/commit 境界に触れる場合は、実装前後に `boundary contract review` を行う。少なくとも `event payload schema`、`helper return type/materialization`、`file/sync artifact contract` のどれに当たるかを確認する。
 6. タスク固有の検証があれば実行する。
 7. 検証は `static verification`、`direct runtime probe`、`real-environment validation` を区別して扱う。どの層まで通ったか、どこが未実施かを task または audit に残す。
-8. プロジェクト全体検証は repo 付属の verify wrapper を優先する。`pwsh` 系では `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-verify.ps1`、bash 系では `./scripts/run-verify.sh` を使う。
+8. プロジェクト全体検証は repo 付属の verify runner を優先する。`{{PYTHON_LAUNCHER}} scripts/run-verify.py` を正規経路にする。
 9. verify wrapper 自体が quoting / environment / compatibility の問題で壊れている場合は、その failure mode を `.agents/context/failure_report.md` に残し、`.agents/AGENTS.md` にある最小の直接検証へ切り替える。failure mode には `empty-output`、`permission-failure`、`compatibility-bug`、`broken-wrapper`、`unknown` の固定ラベルを優先する。wrapper failure だけでコード不良と断定しない。
 10. runtime symptom が残る場合は、特定ログ名を最初の入口に固定せず `input -> launch -> render -> startup/init -> worker -> commit` の boundary 順で切り分ける。各 boundary では `caller-side log`、`callee-side log`、`user-visible UI`、`artifact on disk` から最低 1 つの observable を取る。
 11. 検証が通ってからタスクを完了扱いにする。残るリスクがある場合は task または audit に明示する。

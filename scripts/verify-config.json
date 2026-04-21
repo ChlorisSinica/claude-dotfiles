@@ -1,0 +1,5 @@
+{
+  "VERIFY_CMD": "python -m pytest --tb=short -q",
+  "VERIFY_SHELL": "direct",
+  "PRIMARY_LOG_DIR": ".agents/logs/verify"
+}

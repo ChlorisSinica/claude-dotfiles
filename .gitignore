@@ -5,6 +5,7 @@ Thumbs.db
 # Root-only local directories
 /.*/
 /_*/
+/scripts/_legacy/
 CLAUDE.md
 AGENTS.md
 
@@ -24,3 +25,7 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Tracked template workflow assets
+!templates/codex-main/.agents/
+!templates/codex-main/.agents/**

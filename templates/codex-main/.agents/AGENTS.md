@@ -21,7 +21,7 @@
 7. 実装がまとまったら `codex-impl-review` で収束するまで review / 修正を回す
 8. 長い review や recovery / alignment が続いたら、必要に応じて `handover-skills` で再開手順を残す
 9. review 結果を `.agents/reviews/` に保存する
-10. PowerShell 系での検証は `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-verify.ps1` を優先する
+10. プロジェクト全体検証は `{{PYTHON_LAUNCHER}} scripts/run-verify.py` を優先する
 
 ## 作業ルール
 
@@ -33,12 +33,12 @@
 
 ## 責務分担
 
-- `setup / init / update` のような決定的処理は `.ps1` に寄せる
+- `setup / init / update` のような決定的処理は Python runner に寄せる
 - `research / plan / implement` の判断と進行は `skills` と `prompts` を主役にする
 - review は二層に分ける
 - `skills / prompts` は review の観点、停止条件、次に何をするかを定義する
-- `scripts/run-codex-*.ps1` は 1 実行 = 1 cycle の bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
-- review runner の実行は `pwsh -NoProfile -ExecutionPolicy Bypass -File ...` を正規経路にする
+- `scripts/run-codex-*.py` は 1 実行 = 1 cycle の bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
+- review runner の実行は `{{PYTHON_LAUNCHER}} scripts/...py` を正規経路にする
 - review runner に運用ルールを重複実装しすぎない
 
 ## コミットメッセージ
@@ -77,8 +77,9 @@
   - `plan-review.md`
   - `impl-review.md`
 - `.agents/templates/` : 再利用用テンプレート
-- `scripts/run-codex-plan-review.ps1` : plan review runner
-- `scripts/run-codex-impl-review.ps1` : impl review runner
+- `scripts/run-codex-plan-review.py` : plan review runner
+- `scripts/run-codex-impl-review.py` : impl review runner
+- `scripts/run-verify.py` : verify runner
 
 ## Sonnet Bridge
 

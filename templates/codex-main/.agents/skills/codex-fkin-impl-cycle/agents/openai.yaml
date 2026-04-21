@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 実装サイクル"
+  short_description: "Python で実装と phase review を回す"
+  default_prompt: "この skill を使って .agents/context/tasks.md の次の task を実装し、Python runner で alignment・verification・quality の各 review cycle を収束させてください。最初の phase では必要なら --dry-run / --dump-bundle / --write-trace を使い、runner failure と code failure を分けて扱ってください。"

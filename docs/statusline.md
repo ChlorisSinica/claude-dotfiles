@@ -19,7 +19,8 @@ ctx ⣄        5% (50k/1.0M) │ 5h ⣤        6% (2h55m) │ 7d ⣿⣿⣿⣤   
 ## セットアップ
 
 ```bash
-bash ~/claude-dotfiles/setup.sh --statusline
-bash ~/claude-dotfiles/setup-statusline.sh
-bash ~/claude-dotfiles/setup-statusline.sh -f
+python ~/claude-dotfiles/scripts/setup.py --statusline
+python ~/claude-dotfiles/scripts/setup.py --statusline -f
 ```
+
+`python` は例です。環境に応じて `python3` や `py -3` など、Python 3.11+ の launcher に置き換えてください。正規入口は `scripts/setup.py --statusline` です。`setup-statusline.sh` は互換用としてのみ残しています。

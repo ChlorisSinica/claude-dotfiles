@@ -25,9 +25,7 @@ LOOP（未完了タスクがなくなるまで）:
      - import エラーが発生した場合: 依存先が別タスクで追加予定なら、そのタスクを先に実行する
   2) 毎回必ず検証コマンドを実行:
      - まず tasks.md の該当タスクの DoD コマンドを実行
-     - 次に全体検証:
-       - Bash / Git Bash / Linux / macOS: `.claude/scripts/run-verify.sh`
-       - PowerShell: `.claude/scripts/run-verify.ps1`
+     - 次に全体検証: `{{PYTHON_LAUNCHER}} scripts/run-verify.py`
   3) エラーが出たら **ログ自動読み取り**（後述）を実行し、原因を特定して修正→再実行
      - エラーが消えるまで次へ進まない
   4) PASS したら tasks.md の該当タスクを [x] に更新
