@@ -62,8 +62,14 @@ if not %ERRORLEVEL%==0 (
 )
 
 echo.
-echo [3] Installing Microsoft.PowerShell via winget...
-winget install --id Microsoft.PowerShell -e --silent --accept-source-agreements --accept-package-agreements
+set "WINGET_ARGS=install --id Microsoft.PowerShell -e --silent --accept-source-agreements --accept-package-agreements"
+if %FLAG_FORCE%==1 (
+    echo [3] Reinstalling Microsoft.PowerShell via winget ^(--force^)...
+    set "WINGET_ARGS=%WINGET_ARGS% --force"
+) else (
+    echo [3] Installing Microsoft.PowerShell via winget...
+)
+winget %WINGET_ARGS%
 set "INSTALL_STATUS=%ERRORLEVEL%"
 if not "%INSTALL_STATUS%"=="0" (
     echo.
