@@ -24,6 +24,11 @@ if /i "%FEATURE%"=="git-bash-bell" (
     exit /b %ERRORLEVEL%
 )
 
+if /i "%FEATURE%"=="pwsh" (
+    call "%SCRIPT_DIR%\_setup-pwsh.bat" %2 %3 %4 %5 %6 %7 %8 %9
+    exit /b %ERRORLEVEL%
+)
+
 if /i "%FEATURE%"=="toast" (
     if /i "%ACTION%"=="enable" (
         call "%SCRIPT_DIR%\_setup-toast-notify.bat" --enable %3 %4 %5 %6 %7 %8 %9
@@ -41,6 +46,7 @@ echo Usage:
 echo   %~nx0 git-bash-profile [options]
 echo   %~nx0 bell [options]
 echo   %~nx0 git-bash-bell [options]
+echo   %~nx0 pwsh [--no-pause] [--force]
 echo   %~nx0 toast enable [project_dir] [--no-pause]   (default: current dir)
 echo   %~nx0 toast disable [project_dir] [--no-pause]  (default: current dir)
 exit /b 1

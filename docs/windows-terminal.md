@@ -7,6 +7,7 @@
 ```bat
 ~/claude-dotfiles/windows-terminal/setup-terminal.bat git-bash-profile
 ~/claude-dotfiles/windows-terminal/setup-terminal.bat bell
+~/claude-dotfiles/windows-terminal/setup-terminal.bat pwsh
 ~/claude-dotfiles/windows-terminal/setup-terminal.bat toast enable [project_dir]
 ~/claude-dotfiles/windows-terminal/setup-terminal.bat toast disable [project_dir]
 ```
@@ -36,6 +37,12 @@
 `windows-terminal/_setup-git-bash-bell.bat`
 
 - Git Bash の bell だけを個別に有効化
+
+`windows-terminal/_setup-pwsh.bat [--no-pause] [--force]`
+
+- PowerShell 7 (`pwsh`) を winget 経由でインストール
+- 既にインストール済みなら version を表示して skip（`--force` で再インストール）
+- winget 不在時は Microsoft Store の "App Installer" または公式リリースページを案内
 
 ## 設定同期
 
