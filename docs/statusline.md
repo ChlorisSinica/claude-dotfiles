@@ -1,6 +1,6 @@
 # Statusline
 
-3 行構成の Claude Code 用カスタムステータスラインです。
+3 行構成の Claude Code 用カスタムステータスラインです．
 
 ```text
 Opus 4.6 (1M context)
@@ -23,4 +23,4 @@ python ~/claude-dotfiles/scripts/setup.py --statusline
 python ~/claude-dotfiles/scripts/setup.py --statusline -f
 ```
 
-`python` は例です。環境に応じて `python3` や `py -3` など、Python 3.11+ の launcher に置き換えてください。正規入口は `scripts/setup.py --statusline` です。
+`python` は例です．環境に応じて `python3` や `py -3` など，Python 3.11+ の launcher に置き換えてください．正規入口は `scripts/setup.py --statusline` です．

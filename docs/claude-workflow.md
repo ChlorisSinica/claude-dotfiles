@@ -1,6 +1,6 @@
 # Claude Workflow
 
-Claude Code 主体でこの dotfiles を使うときの入口と運用メモです。
+Claude Code 主体でこの dotfiles を使うときの入口と運用メモです．
 
 ## セットアップ
 
@@ -18,7 +18,7 @@ python scripts/setup.py
 python scripts/setup.py -f
 ```
 
-`python` は例です。環境に応じて `python3` や `py -3` など、Python 3.11+ の launcher に置き換えてください。
+`python` は例です．環境に応じて `python3` や `py -3` など，Python 3.11+ の launcher に置き換えてください．
 
 ## 主な入口
 
@@ -56,12 +56,12 @@ python scripts/setup.py -f
 
 生成直後の注意:
 
-- 新しく展開された `.claude/commands/` や `.agents/skills/` は、起動中の Claude Code / Codex セッションには即時反映されないことがある
-- 使えない場合は一度セッションを開き直すか、アプリを再起動する
+- 新しく展開された `.claude/commands/` や `.agents/skills/` は，起動中の Claude Code / Codex セッションには即時反映されないことがある
+- 使えない場合は一度セッションを開き直すか，アプリを再起動する
 
 ## `/update-workflow`
 
-- `.claude/context/` と runtime state を保持しつつ、template-managed files を更新
+- `.claude/context/` と runtime state を保持しつつ，template-managed files を更新
 - `--codex-main` では `.agents/context/` と `.agents/reviews/` を保持しつつ Codex-first asset を更新
 
 例:
@@ -94,9 +94,9 @@ Claude Code 主体で進めるときの基本フロー:
 
 ## Claude 側の自動承認
 
-この節は `.claude/settings.local.json` を使う workflow 向けです。
+この節は `.claude/settings.local.json` を使う workflow 向けです．
 
-`/init-project` 実行時に `.claude/settings.local.json.bak` が生成されます。必要なときだけ有効化してください。
+`/init-project` 実行時に `.claude/settings.local.json.bak` が生成されます．必要なときだけ有効化してください．
 
 ```bash
 cd /path/to/your/project
@@ -116,7 +116,7 @@ mv .claude/settings.local.json .claude/settings.local.json.bak
 
 ## Claude から Codex を使う場合
 
-`codex-plugin-cc` は Claude Code から `/codex:*` を使う場合に便利です。
+`codex-plugin-cc` は Claude Code から `/codex:*` を使う場合に便利です．
 
 ```text
 /plugin marketplace add openai/codex-plugin-cc

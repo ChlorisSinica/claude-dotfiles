@@ -1,6 +1,6 @@
 # Windows Terminal
 
-`windows-terminal/` 配下の補助スクリプト一覧です。
+`windows-terminal/` 配下の補助スクリプト一覧です．
 
 ## 統合入口
 
@@ -11,7 +11,7 @@
 ~/claude-dotfiles/windows-terminal/setup-terminal.bat toast disable [project_dir]
 ```
 
-`project_dir` を省略するとカレントディレクトリが対象になります。
+`project_dir` を省略するとカレントディレクトリが対象になります．
 
 ## 個別入口
 
@@ -44,4 +44,4 @@ windows-terminal\import.bat
 windows-terminal\export.bat
 ```
 
-`windows-terminal/settings.json` と `windows-terminal/.inputrc` を snapshot として import / export します。
+`windows-terminal/settings.json` と `windows-terminal/.inputrc` を snapshot として import / export します．
