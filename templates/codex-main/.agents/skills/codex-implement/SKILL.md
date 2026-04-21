@@ -12,7 +12,7 @@ description: "`.agents/context/tasks.md` の次の未完了タスクを、局所
 1. `.agents/context/tasks.md` を読む。workflow-heavy な変更や既知の mismatch がある場合は `.agents/context/plan.md` と `.agents/context/implementation_gap_audit.md` も読む。
 2. 次の未完了タスクを選ぶ。ただし plan / implementation drift、古い task wording、実装順の前提崩れを見つけた場合は、その audit を先に行ってよい。
 3. 新しい mismatch を見つけた場合は、作業続行前に `.agents/context/implementation_gap_audit.md` を作成または更新して既知差分を明文化する。
-4. そのタスクを満たす最小限で安全な変更を入れる。
+4. そのタスクを満たす最小限で安全な変更を入れる。`.py` ファイルを Write/Edit した直後は `{{PYTHON_LAUNCHER}} -m py_compile <file>` で構文を通す。`IndentationError` / `SyntaxError` はパース段階で出るため try/except では捕捉できず、静的検証を素通りして runtime まで潜む。失敗したファイルは次のステップへ進む前に修正する。
 5. 変更が helper return、worker/UI payload、file/sync artifact、startup/commit 境界に触れる場合は、実装前後に `boundary contract review` を行う。少なくとも `event payload schema`、`helper return type/materialization`、`file/sync artifact contract` のどれに当たるかを確認する。
 6. タスク固有の検証があれば実行する。
 7. 検証は `static verification`、`direct runtime probe`、`real-environment validation` を区別して扱う。どの層まで通ったか、どこが未実施かを task または audit に残す。
