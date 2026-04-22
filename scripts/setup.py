@@ -19,7 +19,9 @@ IGNORE_NAMES = {"__pycache__", "_legacy"}
 MANIFEST_NAME = ".claude-dotfiles-managed.json"
 SOURCE_METADATA_NAME = ".claude-dotfiles-source.json"
 PRE_MANIFEST_RETIREMENTS: dict[str, set[Path]] = {
-    "commands": set(),
+    "commands": {
+        Path("update-skills.md"),
+    },
     "templates": set(),
     "scripts": {
         Path("init-project.ps1"),
@@ -318,7 +320,6 @@ def install_dotfiles(
     print("Available commands:")
     print("  /init-project    Set up a new project with Claude Code × Codex workflow")
     print("  /update-workflow Refresh workflow commands/agents for an existing project")
-    print("  /update-skills   Compatibility alias for /update-workflow")
     print()
     print("Options:")
     print("  -f               Overwrite managed files")

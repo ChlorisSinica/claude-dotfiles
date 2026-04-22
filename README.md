@@ -35,7 +35,6 @@ python ~/claude-dotfiles/scripts/setup.py -f --codex
 
 - `commands/init-project.md` — `/init-project` グローバルコマンド
 - `commands/update-workflow.md` — 既存プロジェクトの workflow files 更新コマンド
-- `commands/update-skills.md` — `/update-workflow` の互換 alias
 - `templates/project-init/` — 開発プロジェクト初期化テンプレート
 - `templates/research-survey/` — 研究サーベイ用テンプレート
 - `templates/codex-main/` — Codex-first プロジェクト用テンプレート

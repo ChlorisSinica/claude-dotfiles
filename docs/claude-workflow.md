@@ -34,12 +34,6 @@ python scripts/setup.py -f
 /update-workflow python-pytorch
 ```
 
-互換 alias:
-
-```text
-/update-skills python-pytorch
-```
-
 ## `/init-project`
 
 - 既定テンプレートは `project-init`

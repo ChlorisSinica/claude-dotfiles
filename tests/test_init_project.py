@@ -183,50 +183,6 @@ class InitProjectTests(unittest.TestCase):
         for name in ("research.md", "plan.md", "tasks.md", "implementation_gap_audit.md"):
             self.assertFalse((agents_context / name).exists(), name)
 
-    def test_skills_only_refresh_works_with_existing_runner_set(self) -> None:
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                scaffold_exit = self.runner.main(["--codex-main", "python"])
-
-        self.assertEqual(scaffold_exit, 0)
-
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                exit_code = self.runner.main(["--codex-main", "python", "--skills-only"])
-
-        self.assertEqual(exit_code, 0)
-        self.assertTrue((self.repo_root / ".agents" / "skills").is_dir())
-        self.assertTrue((self.repo_root / "scripts" / "run-codex-plan-review.py").exists())
-        self.assertTrue((self.repo_root / ".claude" / "settings.json").exists())
-
-    def test_skills_only_does_not_require_launcher_probe(self) -> None:
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                scaffold_exit = self.runner.main(["--codex-main", "python"])
-
-        self.assertEqual(scaffold_exit, 0)
-
-        with mock.patch.object(
-            self.runner,
-            "discover_portable_python_launcher",
-            side_effect=AssertionError("skills-only should not probe launcher"),
-        ):
-            with chdir(self.repo_root):
-                exit_code = self.runner.main(["--codex-main", "python", "--skills-only"])
-
-        self.assertEqual(exit_code, 0)
-        plan_review_skill = (self.repo_root / ".agents" / "skills" / "codex-plan-review" / "SKILL.md").read_text(encoding="utf-8")
-        expected_launcher = "python3"
-        self.assertIn(f"{expected_launcher} scripts/run-codex-plan-review.py --phase arch", plan_review_skill)
-
-    def test_fresh_skills_only_requires_existing_runner_set(self) -> None:
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                exit_code = self.runner.main(["--codex-main", "python", "--skills-only"])
-
-        self.assertEqual(exit_code, 1)
-        self.assertFalse((self.repo_root / ".agents" / "skills").exists())
-
     def test_project_init_template_copies_claude_assets(self) -> None:
         with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
             with chdir(self.repo_root):
@@ -691,54 +647,6 @@ class InitProjectTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertEqual(active.read_text(encoding="utf-8"), "{bad json\n")
-
-    def test_codex_main_skills_only_preserves_non_skill_manifest_entries(self) -> None:
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                scaffold_exit = self.runner.main(["--codex-main", "python"])
-
-        self.assertEqual(scaffold_exit, 0)
-        manifest = self.repo_root / ".agents" / self.runner.WORKFLOW_MANIFEST_NAME
-        manifest.parent.mkdir(parents=True, exist_ok=True)
-        manifest.write_text(
-            json.dumps(
-                {
-                    "managed": [
-                        "prompts/kept.md",
-                        "skills/old-skill/SKILL.md",
-                    ]
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                exit_code = self.runner.main(["--codex-main", "python", "--skills-only", "-f"])
-
-        self.assertEqual(exit_code, 0)
-        updated = json.loads(manifest.read_text(encoding="utf-8"))
-        self.assertIn("prompts/kept.md", updated["managed"])
-
-    def test_codex_main_skills_only_preserves_unmanaged_legacy_prompt(self) -> None:
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                scaffold_exit = self.runner.main(["--codex-main", "python"])
-
-        self.assertEqual(scaffold_exit, 0)
-        legacy_prompt = self.repo_root / ".agents" / "prompts" / "codex_impl_review.md"
-        legacy_prompt.parent.mkdir(parents=True, exist_ok=True)
-        legacy_prompt.write_text("custom legacy prompt\n", encoding="utf-8")
-
-        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
-            with chdir(self.repo_root):
-                exit_code = self.runner.main(["--codex-main", "python", "--skills-only", "-f"])
-
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(legacy_prompt.read_text(encoding="utf-8"), "custom legacy prompt\n")
 
     def test_project_init_force_preserves_unmanaged_claude_settings_files(self) -> None:
         claude_dir = self.repo_root / ".claude"

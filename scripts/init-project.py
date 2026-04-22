@@ -42,7 +42,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("preset", nargs="?")
     parser.add_argument("-f", "--force", action="store_true")
     parser.add_argument("--workflow-only", action="store_true")
-    parser.add_argument("--skills-only", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -99,13 +98,11 @@ def substitute_content(content: str, preset: dict[str, Any]) -> str:
     return result
 
 
-def should_skip_template_file(relative_path: str, *, workflow_only: bool, skills_only: bool, workflow_root: str) -> bool:
+def should_skip_template_file(relative_path: str, *, workflow_only: bool, workflow_root: str) -> bool:
     normalized = relative_path.replace("\\", "/")
     if workflow_root == ".agents" and normalized == "prompts/codex_impl_review.md":
         # Fresh codex-main scaffolds rebuild the legacy prompt from the split prompt parts.
         return True
-    if skills_only:
-        return workflow_root == ".agents" and not normalized.startswith("skills/")
     if workflow_only:
         if workflow_root == ".agents":
             return normalized.startswith("context/") or normalized.startswith("reviews/")
@@ -120,7 +117,6 @@ def copy_template_tree(
     *,
     force: bool,
     workflow_only: bool,
-    skills_only: bool,
     workflow_root: str,
     previously_managed: set[str] | None = None,
 ) -> set[str]:
@@ -130,7 +126,7 @@ def copy_template_tree(
         if not src.is_file():
             continue
         rel = src.relative_to(template_workflow_dir).as_posix()
-        if should_skip_template_file(rel, workflow_only=workflow_only, skills_only=skills_only, workflow_root=workflow_root):
+        if should_skip_template_file(rel, workflow_only=workflow_only, workflow_root=workflow_root):
             continue
         dst = dest_workflow_dir / rel
         if dst.exists():
@@ -167,11 +163,9 @@ def write_workflow_manifest(path: Path, entries: set[str]) -> None:
     write_text(path, json.dumps({"managed": sorted(entries)}, ensure_ascii=False, indent=2) + "\n")
 
 
-def should_preserve_workflow_file(relative_path: str, *, workflow_only: bool, skills_only: bool, workflow_root: str) -> bool:
+def should_preserve_workflow_file(relative_path: str, *, workflow_only: bool, workflow_root: str) -> bool:
     normalized = relative_path.replace("\\", "/")
     if normalized == ".claude-dotfiles-managed.json":
-        return True
-    if skills_only and not normalized.startswith("skills/"):
         return True
     if workflow_root == ".agents":
         return (
@@ -192,7 +186,6 @@ def prune_workflow_tree(
     expected: set[str],
     force: bool,
     workflow_only: bool,
-    skills_only: bool,
     workflow_root: str,
 ) -> None:
     manifest_path = dest_workflow_dir / WORKFLOW_MANIFEST_NAME
@@ -203,7 +196,6 @@ def prune_workflow_tree(
             if should_preserve_workflow_file(
                 relative,
                 workflow_only=workflow_only,
-                skills_only=skills_only,
                 workflow_root=workflow_root,
             ):
                 continue
@@ -225,13 +217,10 @@ def prune_workflow_tree(
         if should_preserve_workflow_file(
             entry,
             workflow_only=workflow_only,
-            skills_only=skills_only,
             workflow_root=workflow_root,
         )
         and (dest_workflow_dir / entry).exists()
     )
-    if skills_only:
-        manifest_entries.update(entry for entry in previously_managed if not entry.startswith("skills/"))
     write_workflow_manifest(manifest_path, manifest_entries)
 
 
@@ -240,10 +229,7 @@ def build_legacy_impl_review_prompt(
     *,
     force: bool,
     previously_managed: set[str],
-    skills_only: bool,
 ) -> bool:
-    if skills_only:
-        return "prompts/codex_impl_review.md" in previously_managed
     prompt_root = dest_agents_dir / "prompts" / "impl-review"
     core = prompt_root / "core.md"
     quality = prompt_root / "phases" / "quality.md"
@@ -264,9 +250,7 @@ def build_legacy_impl_review_prompt(
     return True
 
 
-def seed_context_files(dest_agents_dir: Path, *, force: bool, workflow_only: bool, skills_only: bool) -> None:
-    if skills_only:
-        return
+def seed_context_files(dest_agents_dir: Path, *, force: bool, workflow_only: bool) -> None:
     if workflow_only:
         return
     context_dir = dest_agents_dir / "context"
@@ -305,15 +289,6 @@ def prune_manifest_owned_paths(root: Path, managed_entries: set[str], *, keep: s
             directory.rmdir()
         except OSError:
             continue
-
-
-def require_existing_codex_runners(repo_root: Path) -> None:
-    missing = [name for name in ("run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py") if not (repo_root / "scripts" / name).is_file()]
-    if missing:
-        joined = ", ".join(missing)
-        raise RuntimeError(
-            f"--skills-only requires an existing codex-main runner set. Missing: {joined}. Run full --codex-main first."
-        )
 
 
 def copy_runner_files(source_scripts_dir: Path, dest_repo_root: Path, *, force: bool) -> set[str]:
@@ -376,39 +351,6 @@ def discover_portable_python_launcher() -> str:
     raise RuntimeError(
         "Unable to find a portable Python launcher. Expected one of `py`, `python3`, or `python` on PATH."
     )
-
-
-def default_portable_python_launcher() -> str:
-    return "py -3" if os.name == "nt" else "python3"
-
-
-def infer_existing_python_launcher(repo_root: Path) -> str | None:
-    candidates = (
-        repo_root / ".agents" / "skills" / "codex-plan-review" / "SKILL.md",
-        repo_root / ".agents" / "skills" / "codex-impl-review" / "SKILL.md",
-        repo_root / ".agents" / "skills" / "codex-fkin-impl-cycle" / "SKILL.md",
-        repo_root / ".agents" / "AGENTS.md",
-    )
-    patterns = (
-        r"`([^`\r\n]+?)\s+scripts/run-codex-plan-review\.py\b",
-        r"`([^`\r\n]+?)\s+scripts/run-codex-impl-review\.py\b",
-        r"`([^`\r\n]+?)\s+scripts/run-codex-impl-cycle\.py\b",
-        r"`([^`\r\n]+?)\s+scripts/run-verify\.py\b",
-    )
-    for path in candidates:
-        if not path.is_file():
-            continue
-        try:
-            content = read_text(path)
-        except OSError:
-            continue
-        for pattern in patterns:
-            match = re.search(pattern, content)
-            if match:
-                launcher = match.group(1).strip()
-                if launcher:
-                    return launcher
-    return None
 
 
 def materialize_verify_command(command: str, launcher: str) -> str:
@@ -1029,7 +971,7 @@ def prune_retired_runner_files(dest_repo_root: Path, names: tuple[str, ...], *, 
     write_workflow_manifest(manifest_path, manifest_entries)
 
 
-def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool, skills_only: bool) -> None:
+def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool) -> None:
     template_root = discover_template_root("codex-main")
     source_scripts_dir = discover_script_source_dir()
     presets = load_presets(template_root)
@@ -1039,13 +981,7 @@ def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool,
     if not isinstance(preset, dict):
         raise ValueError(f"Invalid preset '{preset_name}'")
     repo_root = Path.cwd().resolve()
-    if skills_only:
-        require_existing_codex_runners(repo_root)
-    launcher = (
-        infer_existing_python_launcher(repo_root) or default_portable_python_launcher()
-        if skills_only
-        else discover_portable_python_launcher()
-    )
+    launcher = discover_portable_python_launcher()
     preset["PYTHON_LAUNCHER"] = launcher
     preset["VERIFY_CMD"] = materialize_verify_command(str(preset.get("VERIFY_CMD", "")).strip(), launcher)
     dest_agents_dir = repo_root / ".agents"
@@ -1056,16 +992,14 @@ def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool,
         preset,
         force=force,
         workflow_only=workflow_only,
-        skills_only=skills_only,
         workflow_root=".agents",
         previously_managed=workflow_manifest,
     )
-    seed_context_files(dest_agents_dir, force=force, workflow_only=workflow_only, skills_only=skills_only)
+    seed_context_files(dest_agents_dir, force=force, workflow_only=workflow_only)
     if build_legacy_impl_review_prompt(
         dest_agents_dir,
         force=force,
         previously_managed=workflow_manifest,
-        skills_only=skills_only,
     ):
         expected_workflow.add("prompts/codex_impl_review.md")
     prune_workflow_tree(
@@ -1073,38 +1007,36 @@ def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool,
         expected=expected_workflow,
         force=force,
         workflow_only=workflow_only,
-        skills_only=skills_only,
         workflow_root=".agents",
     )
-    if not skills_only:
-        expected_scripts = copy_runner_files(source_scripts_dir, repo_root, force=force)
-        if write_verify_config(
-            repo_root,
-            preset,
-            force=force,
-            log_dir=".agents/logs/verify",
-            launcher=launcher,
-            previously_managed=read_workflow_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
-        ):
-            expected_scripts.add("verify-config.json")
-        prune_retired_runner_files(repo_root, RETIRED_CODEX_RUNNERS, force=force, expected=expected_scripts)
-        claude_manifest_path = repo_root / ".claude" / WORKFLOW_MANIFEST_NAME
-        previous_claude_manifest = read_workflow_manifest(claude_manifest_path)
-        settings_entries = {"settings.json", "settings.local.json.bak", "settings.local.json"}
-        if force:
-            prune_manifest_owned_paths(
-                repo_root / ".claude",
-                previous_claude_manifest,
-                keep=settings_entries,
-            )
-        managed_claude = write_settings_files(
-            repo_root,
-            preset,
-            force=force,
-            previously_managed=previous_claude_manifest,
+    expected_scripts = copy_runner_files(source_scripts_dir, repo_root, force=force)
+    if write_verify_config(
+        repo_root,
+        preset,
+        force=force,
+        log_dir=".agents/logs/verify",
+        launcher=launcher,
+        previously_managed=read_workflow_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
+    ):
+        expected_scripts.add("verify-config.json")
+    prune_retired_runner_files(repo_root, RETIRED_CODEX_RUNNERS, force=force, expected=expected_scripts)
+    claude_manifest_path = repo_root / ".claude" / WORKFLOW_MANIFEST_NAME
+    previous_claude_manifest = read_workflow_manifest(claude_manifest_path)
+    settings_entries = {"settings.json", "settings.local.json.bak", "settings.local.json"}
+    if force:
+        prune_manifest_owned_paths(
+            repo_root / ".claude",
+            previous_claude_manifest,
+            keep=settings_entries,
         )
-        write_workflow_manifest(claude_manifest_path, managed_claude)
-        update_gitignore(repo_root, preset, workflow_root=".agents")
+    managed_claude = write_settings_files(
+        repo_root,
+        preset,
+        force=force,
+        previously_managed=previous_claude_manifest,
+    )
+    write_workflow_manifest(claude_manifest_path, managed_claude)
+    update_gitignore(repo_root, preset, workflow_root=".agents")
 
 
 def initialize_standard_template(template_name: str, preset_name: str, *, force: bool, workflow_only: bool) -> None:
@@ -1129,7 +1061,6 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
         preset,
         force=force,
         workflow_only=workflow_only,
-        skills_only=False,
         workflow_root=".claude",
         previously_managed=workflow_manifest,
     )
@@ -1178,7 +1109,6 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
         expected=expected_workflow,
         force=force,
         workflow_only=workflow_only,
-        skills_only=False,
         workflow_root=".claude",
     )
     update_gitignore(repo_root, preset, workflow_root=".claude")
@@ -1199,7 +1129,6 @@ def main(argv: list[str] | None = None) -> int:
                 args.preset,
                 force=args.force,
                 workflow_only=args.workflow_only,
-                skills_only=args.skills_only,
             )
             print(f"Initialized codex-main preset: {args.preset}")
             print("Created/updated: .agents/, .claude/settings.json, .claude/settings.local.json(.bak), scripts/*.py, .gitignore")
