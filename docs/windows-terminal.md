@@ -2,7 +2,7 @@
 
 `windows-terminal/` 配下の補助スクリプト一覧です．
 
-## 統合入口
+## 統合コマンド
 
 ```bat
 ~/claude-dotfiles/windows-terminal/setup-terminal.bat git-bash-profile
@@ -14,7 +14,7 @@
 
 `project_dir` を省略するとカレントディレクトリが対象になります．
 
-## 個別入口
+## 個別コマンド
 
 `windows-terminal/_setup-git-bash-profile.bat`
 

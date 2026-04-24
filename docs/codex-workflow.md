@@ -1,12 +1,12 @@
 # Codex Workflow
 
-Codex 主体でこの dotfiles を使うときの入口です．`codex-main` は `.agents/` を主軸にしつつ，Codex ランタイム設定だけ `.claude/settings*.json` を使います．
+Codex 主体でこの dotfiles を使うときの起点です．`codex-main` は `.agents/` を主軸にしつつ，Codex ランタイム設定だけ `.claude/settings*.json` を使います．
 
 ## セットアップ
 
 ```bash
-git clone https://github.com/ChlorisSinica/claude-dotfiles.git ~/claude-dotfiles
-python ~/claude-dotfiles/scripts/setup.py --codex
+git clone https://github.com/ChlorisSinica/claude-dotfiles.git ~/claude-dotfiles  # リポジトリ取得
+python ~/claude-dotfiles/scripts/setup.py --codex                                 # Claude + Codex 用を配布
 ```
 
 更新時:
@@ -14,34 +14,34 @@ python ~/claude-dotfiles/scripts/setup.py --codex
 ```bash
 cd ~/claude-dotfiles
 git pull
-python scripts/setup.py --codex
-python scripts/setup.py -f --codex
+python scripts/setup.py --codex     # 新規ファイルのみコピー
+python scripts/setup.py -f --codex  # 管理下のファイルを上書き更新
 ```
 
-`setup.py --codex` は Claude 用資産に加えて `~/.codex/skills/` へ global skill も配布します．`python` は例なので，環境に応じて `python3` や `py -3` など Python 3.11+ launcher に置き換えてください．
+`setup.py --codex` は Claude 用ファイルに加えて `~/.codex/skills/` へグローバルスキルも配布します．`python` は例なので，環境に応じて `python3` や `py -3` など Python 3.11+ のコマンドに置き換えてください．既存の Codex 側 install がこの dotfiles の管理下にある場合は，`--codex` を省略しても自動で同期されます．
 
-## グローバル skill
+## グローバルスキル
 
-- `init-project` — Codex-first scaffold の作成・更新（smart mode）．Bundle 2 で単一入口に統合（旧 `update-workflow-codex` / `init-project-codex` は廃止）
+- `init-project` — Codex 主体の雛形を作成・更新する．smart mode で新規作成と既存更新を自動判定．実体は `~/.claude/scripts/init-project.py -t codex-main <preset>` を呼び出すだけ
 
 ## 仕様整理
 
 `codex-main` は次の 3 層で構成します．
 
-- global 入口
+- グローバルな呼び出し
   - `$init-project`（smart: manifest 有なら update，無なら init）
   - 必要なら Claude Code から `/init-project -t codex-main ...`
 - Python 本体
   - `codex-main` の正規実装は `~/.claude/scripts/init-project.py`
   - 新規作成: `-t codex-main <preset>`
   - 既存 repo 更新: 引数省略で smart update，または `--update` 明示
-  - 強制 re-init: `--fresh`
-  - preset mismatch: exit code 3 + WARNING．承認は `--accept-preset-change`
-- repo-local workflow
+  - 強制再作成: `--fresh`
+  - preset 不一致: 終了コード 3 と警告．承認は `--accept-preset-change`
+- プロジェクト内のワークフロー
   - 調査，計画，実装は `.agents/skills/*` と `.agents/prompts/*`
   - review / verify の機械処理だけ `scripts/run-codex-*.py` と `scripts/run-verify.py`
 
-要するに，`$init-project` は単一入口，`.py` は scaffold / update 本体，日々の開発フローは repo-local の `.agents/` で回す構成です．
+要するに，`$init-project` は唯一の呼び出し，`.py` は雛形の作成と更新の本体，日々の開発フローはプロジェクト内の `.agents/` で回す構成です．
 
 ## 最短フロー
 
@@ -55,15 +55,15 @@ $init-project ahk
 
 ```text
 $init-project ahk   # preset 引数 → update + preset 確認
-$init-project       # 引数省略 → manifest tag から復元
+$init-project       # 引数省略 → manifest から preset / template を復元
 ```
 
 Python から直接呼ぶ場合:
 
 ```text
-<python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk    # 新規 scaffold
-<python-launcher> ~/.claude/scripts/init-project.py --update              # 既存 refresh
-<python-launcher> ~/.claude/scripts/init-project.py ahk --fresh           # 強制 re-init
+<python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk    # 新規作成
+<python-launcher> ~/.claude/scripts/init-project.py --update              # 既存を更新
+<python-launcher> ~/.claude/scripts/init-project.py ahk --fresh           # 強制再作成
 ```
 
 注意:
@@ -103,13 +103,13 @@ $init-project → $codex-research → $codex-plan
 
 補足:
 
-- 既存 repo の更新も `$init-project`（smart mode で update に遷移）．`$update-workflow` は Bundle 2 で廃止
+- 既存プロジェクトの更新も `$init-project`（smart mode で更新に遷移）．旧 `$update-workflow` は廃止済み
 - 小さな修正では `$codex-research` や `$codex-review` を軽量化してよい
 
 ## 責務分担
 
 - `setup / init / update` は Python runner を正規実装にする
-- `research / plan / implement` は repo-local の `skills + prompts` を主役にする
+- `research / plan / implement` はプロジェクト内の `skills + prompts` を主役にする
 - review は `skills + prompts` と `scripts/run-codex-*.py` の二層で扱う
 - `skills + prompts` は review 観点，停止条件，どのフェーズへ進むかを定義する
 - review runner は bundle 組み立て，`codex review -` 実行，結果保存のような機械的処理だけを担う
@@ -134,18 +134,27 @@ $init-project → $codex-research → $codex-plan
 
 ## 反映タイミング
 
-- 新しく展開された repo-local skills は，起動中の Codex / Claude セッションには即時反映されないことがある
+- 新しく展開されたプロジェクト内のスキルは，起動中の Codex / Claude セッションに即時反映されないことがある
 - 使えない場合は一度セッションを開き直すか，アプリを再起動する
 
-## repo-local skill
+## プロジェクト内スキル一覧
 
-- `.agents/skills/codex-research`
-- `.agents/skills/codex-plan`
-- `.agents/skills/codex-plan-review`
-- `.agents/skills/codex-implement`
-- `.agents/skills/codex-impl-review`
-- `.agents/skills/codex-review`
-- `.agents/skills/sonnet-dp-research-bridge`
+`codex-main` で生成される `.agents/skills/` 配下のスキル．
+
+| スキル | 役割 | 主な出力先 | 対応 runner |
+|---|---|---|---|
+| `codex-research` | コードベース調査 | `.agents/context/research.md` | — |
+| `codex-plan` | 設計とタスクリスト作成 | `.agents/context/plan.md`, `.agents/context/tasks.md` | — |
+| `codex-plan-review` | plan / tasks の収束レビュー | 中間: `.agents/context/codex_plan_*.md`，共有: `.agents/reviews/` | `scripts/run-codex-plan-review.py` |
+| `codex-implement` | task 単位の実装と検証 | コード変更，verify ログ | `scripts/run-verify.py` |
+| `codex-impl-review` | 実装変更の収束レビュー | 中間: `.agents/context/codex_impl_review.md`，共有: `.agents/reviews/impl-review.md` | `scripts/run-codex-impl-review.py` |
+| `codex-fkin-impl-cycle` | 実装と review cycle の自動周回 | 上記の集約 | `scripts/run-codex-impl-cycle.py` |
+| `codex-review` | 単発のレビュー | `.agents/reviews/` | — |
+| `handover-skills` | 長い cycle の引き継ぎ整理 | handover artifact | — |
+| `sonnet-dp-research-bridge` | 必要時に Claude / Sonnet へ人力で調査を委譲 | `.agents/context/` | — |
+
+- review runner は 1 実行 = 1 cycle の bundle 作成，`codex review -` 実行，結果保存を担う機械処理部分
+- runner の既定 model / reasoning effort は `gpt-5.4 / high`．既定の timeout は 600 秒．長い review は `--review-timeout-sec <seconds>` で延長
 
 ## Sonnet 連携
 

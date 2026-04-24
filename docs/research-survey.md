@@ -2,11 +2,11 @@
 
 研究サーベイ用テンプレートの概要です．
 
-## 入口
+## 呼び出し方
 
 ```text
-/init-project survey-cv
-/init-project survey-ms
+/init-project survey-cv  # Computer Vision 分野
+/init-project survey-ms  # 材料科学分野
 ```
 
 ## ワークフロー
