@@ -33,9 +33,9 @@ python scripts/setup.py -f
 既存プロジェクトの workflow 更新（smart mode で自動遷移）:
 
 ```text
-/init-project python-pytorch     # preset 確認付き update
-/init-project                     # preset を manifest から復元
-/init-project --update python-pytorch  # update 強制（manifest 無ならエラー）
+/init-project python-pytorch            # preset 確認付き update
+/init-project                           # preset を manifest から復元
+/init-project --update python-pytorch   # update 強制（manifest 無ならエラー）
 ```
 
 ## `/init-project` 概要
@@ -50,11 +50,11 @@ python scripts/setup.py -f
 例:
 
 ```text
-/init-project python                        # 新規 or 既存 refresh
-/init-project survey-cv                     # research-survey preset
-/init-project -t codex-main python          # Codex-first 新規
-/init-project python --fresh                # 強制 re-init
-/init-project python-pytorch --accept-preset-change  # preset 差し替え承認
+/init-project python                                    # 新規 or 既存 refresh
+/init-project survey-cv                                 # research-survey preset
+/init-project -t codex-main python                      # Codex-first 新規
+/init-project python --fresh                            # 強制 re-init
+/init-project python-pytorch --accept-preset-change     # preset 差し替え承認
 ```
 
 生成直後の注意:

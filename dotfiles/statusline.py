@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """3-line braille dots - model / project+branch / metrics with remaining"""
-import json, os, sys
+import json, os, re, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,6 +12,10 @@ data = json.load(sys.stdin)
 BRAILLE = ' ⣀⣄⣤⣦⣶⣷⣿'
 R = '\033[0m'
 DIM = '\033[2m'
+ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
+
+def visible_len(s):
+    return len(ANSI_RE.sub('', s))
 
 def gradient(pct):
     if pct < 50:
@@ -127,4 +131,9 @@ week = week_data.get('used_percentage')
 if week is not None:
     line3_parts.append(fmt_rate('7d', week, week_data))
 
-print(f'{model}\n{line_proj}\n{sep.join(line3_parts)}', end='')
+line3 = sep.join(line3_parts)
+pad = visible_len(line3) - visible_len(model) - visible_len(line_proj)
+if pad >= 1:
+    print(f'{model}{" " * pad}{line_proj}\n{line3}', end='')
+else:
+    print(f'{model}\n{line_proj}\n{line3}', end='')

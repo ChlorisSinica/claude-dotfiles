@@ -43,7 +43,7 @@ python ~/claude-dotfiles/scripts/setup.py -f --codex
 
 `setup.py --codex` を使うと，さらに `~/.codex/skills/` に以下の global skill が入ります:
 
-- `init-project` — Codex から `codex-main` scaffold の作成・更新（smart mode）を行う入口
+- `init-project` — Codex skill．`codex-main` scaffold の作成・更新（smart mode）を担う．内部で `~/.claude/scripts/init-project.py -t codex-main <preset>` を呼ぶ
 
 また，既知の plugin manifest warning を減らすために `fix_codex_plugin_prompts.py` を best-effort で実行します．
 
@@ -62,58 +62,59 @@ python scripts/setup.py -f --codex  # Claude + Codex 用ファイルを上書き
 
 ## 使い方
 
-入口は 3 種類あります．
+`setup.py` と `init-project.py` は **Python script が実体**．Python を直接叩くのが基本．Claude Code の slash command（`/init-project`）と Codex の skill（`$init-project`）は同じ Python script を呼ぶ薄いラッパー．どこから起動しても最終的に同じコードが実行される．
 
-- Claude Code: `/command`
-- Codex: `$skill`
-- Python 直実行: `~/.claude/scripts/*.py`
+### コマンド対応表
 
-### 入口対応表
+`/init-project`（Claude）と `$init-project`（Codex）は内部で `init-project.py` を呼ぶ．**smart mode** で新規 scaffold と既存 workflow update を manifest 検出により自動判定．旧 `/update-workflow` / `/update-skills` / `$update-workflow` は Bundle 2 で削除済．
 
-`/init-project`（と Codex 側 `$init-project`）は **smart mode** で init と workflow update を自動判定します．旧 `/update-workflow` / `/update-skills` / `$update-workflow` は Bundle 2 で削除されました．
-
-| 操作 | Claude Code | Codex | Python 直叩き |
+| 操作 | Python（実体） | Claude Code | Codex |
 |---|---|---|---|
-| 新規 scaffold（Claude-first，default） | `/init-project <preset>` | — | `python ~/.claude/scripts/init-project.py <preset>` |
-| 新規 scaffold（Codex-first） | `/init-project -t codex-main <preset>` | `$init-project <preset>` | `python ~/.claude/scripts/init-project.py -t codex-main <preset>` |
-| 新規 scaffold（研究サーベイ） | `/init-project survey-cv`（preset 名から自動判定）| — | `python ~/.claude/scripts/init-project.py survey-cv` |
-| workflow 更新（smart） | `/init-project <preset>`（manifest 有）または引数無 | `$init-project <preset>` / bare | 上記と同じ．manifest 検出で update mode に自動遷移 |
-| workflow 更新を明示 | `/init-project <preset> --update` | `$init-project <preset> --update` | `... init-project.py <preset> --update` |
-| 強制 re-init（全上書き） | `/init-project <preset> --fresh` | `$init-project <preset> --fresh` | `... init-project.py <preset> --fresh` |
+| 新規 scaffold（project-init，default） | `python ~/.claude/scripts/init-project.py <preset>` | `/init-project <preset>` | — |
+| 新規 scaffold（codex-main） | `python ~/.claude/scripts/init-project.py -t codex-main <preset>` | `/init-project -t codex-main <preset>` | `$init-project <preset>` |
+| 新規 scaffold（research-survey） | `python ~/.claude/scripts/init-project.py survey-cv` | `/init-project survey-cv`（preset 名から自動判定）| — |
+| workflow 更新（smart） | `python ~/.claude/scripts/init-project.py <preset>`（manifest 有で update に遷移） | `/init-project <preset>` | `$init-project <preset>` |
+| workflow 更新を明示 | `python ~/.claude/scripts/init-project.py <preset> --update` | `/init-project <preset> --update` | `$init-project <preset> --update` |
+| 強制 re-init（全上書き） | `python ~/.claude/scripts/init-project.py <preset> --fresh` | `/init-project <preset> --fresh` | `$init-project <preset> --fresh` |
 
-- `$` は Codex から呼ぶ skill，`/` は Claude Code から呼ぶ slash command．
-- Codex 側の skill は codex-main 専用（Claude-first / 研究サーベイは Claude Code 側から呼ぶ）．
+- Codex skill は codex-main 専用．project-init / research-survey は Python 直叩き or Claude Code 経由で．
 - preset mismatch 検出時は exit code 3．`--accept-preset-change` で非対話承認．
-- 既存 scaffold で別 template に切り替えたい場合は手動で `rm -rf .claude .agents` してから再 init．
+- 既存 scaffold で別 template に切り替えるには手動で `rm -rf .claude .agents` してから再 init．
 
-全体仕様は次の 3 層です．
+構成は 3 層：
 
-- global 入口
-  - Claude Code の `/init-project`
-  - Codex の `$init-project`
-- Python 本体
-  - `codex-main` の正規実装は `~/.claude/scripts/init-project.py`
-  - 入口は最終的にこの `.py` を呼ぶ
-- repo-local workflow
-  - `codex-main` では `.agents/skills/`, `.agents/prompts/`, `.agents/context/`, `.agents/reviews/` を使う
-  - review / verify の機械処理だけ `scripts/run-codex-*.py`, `scripts/run-verify.py` が担う
+- **Python 本体**（実体）: `~/.claude/scripts/init-project.py` が scaffold / update を実行する正規実装
+- **ラッパー**（任意）: Claude Code の `/init-project` と Codex の `$init-project` は上記 Python を呼ぶ薄い呼び出し
+- **repo-local workflow**: `codex-main` 生成後は `.agents/skills/`, `.agents/prompts/`, `.agents/context/`, `.agents/reviews/` を使う．review / verify の機械処理は `scripts/run-codex-*.py`, `scripts/run-verify.py` が担う
 
-Python 直実行時の注意:
+Python 直実行時のパス表記:
 
-- `~/.claude/...` はホームディレクトリ配下を指す
-- `/.claude/...` は Windows では `C:\.claude\...` 扱いになるため使わない
+- `~/.claude/...` はホームディレクトリ配下を指す（Windows では `C:\Users\<user>\.claude\...`）
+- `/.claude/...` は Windows で `C:\.claude\...` になってしまうため使わない
 - 明示パスにしたい場合は `C:\Users\CVSLab\.claude\scripts\init-project.py` のように書く
 
-### Claude Code
+### Python から実行（実体・基本）
 
 ```
-/init-project python-pytorch               # 新規 or 既存 refresh（smart）
+python ~/.claude/scripts/init-project.py python                  # 新規 or 既存 refresh（smart, default = project-init）
+python ~/.claude/scripts/init-project.py                         # manifest 有なら preset 復元で refresh
+python ~/.claude/scripts/init-project.py -t codex-main python    # codex-main scaffold を明示
+python ~/.claude/scripts/init-project.py python --update         # update mode 強制
+python ~/.claude/scripts/init-project.py python --fresh          # 全 overwrite で再 init
+```
+
+`python` は例．環境に応じて `python3` や `py -3` など Python 3.11+ launcher に置き換える．
+
+### Claude Code から呼ぶ場合（ラッパー）
+
+```
+/init-project python-pytorch                # 新規 or 既存 refresh（smart）
 /init-project                               # manifest 有なら preset 復元で refresh
 /init-project python-pytorch --update       # update mode 強制
 /init-project python-pytorch --fresh        # 全 overwrite で再 init
 ```
 
-### Codex
+### Codex から呼ぶ場合（ラッパー）
 
 ```
 $init-project python                        # 新規 or 既存 refresh（smart, codex-main）
@@ -122,30 +123,11 @@ $init-project python --update               # update 強制
 $init-project python --fresh                # 全 overwrite で再 init
 ```
 
-### Python 直実行
+生成される主な資産（template 別）:
 
-```text
-<python-launcher> ~/.claude/scripts/init-project.py [-t <template>] [<preset>] [--update | --fresh] [--accept-preset-change]
-```
-
-`<python-launcher>` には `python`, `python3`, `py -3` など Python 3.11+ の launcher．代表例:
-
-- 新規 Codex-first scaffold:
-  ```text
-  <python-launcher> ~/.claude/scripts/init-project.py -t codex-main python
-  ```
-- 既存 scaffold の workflow 更新（smart mode，引数省略可）:
-  ```text
-  <python-launcher> ~/.claude/scripts/init-project.py
-  ```
-- 強制 re-init:
-  ```text
-  <python-launcher> ~/.claude/scripts/init-project.py python --fresh
-  ```
-
-旧 `.ps1` / `.sh` runner は `scripts/_legacy/` に退避してあり，新規運用では使用しません．
-
-生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `.claude/settings.json`, `.claude/settings.local.json.bak`, `scripts/run-verify.py`, `scripts/run-codex-plan-review.py`, `scripts/run-codex-impl-review.py`, `scripts/run-codex-impl-cycle.py`, `scripts/fix_codex_plugin_prompts.py` です．
+- **共通**（全 template）: `.claude/settings.json`, `.claude/settings.local.json(.bak)`, `scripts/run-verify.py`, `scripts/verify-config.json`, `.gitignore`
+- **codex-main 固有**: `.agents/AGENTS.md`, `.agents/skills/`, `.agents/prompts/`, `.agents/context/`, `.agents/reviews/`, `scripts/run-codex-plan-review.py`, `scripts/run-codex-impl-review.py`, `scripts/run-codex-impl-cycle.py`, `scripts/fix_codex_plugin_prompts.py`
+- **project-init / research-survey 固有**: `.claude/CLAUDE.md`, `.claude/commands/`, `.claude/agents/`, `.claude/hooks/syntax-check.py`
 
 `/init-project` の smart update は `.claude/context/`，`.agents/context/`，`.agents/reviews/`，`.claude/agents/sessions.json` を保持しつつ，template-managed files と generated workflow files（`.claude/CLAUDE.md`，`.claude/settings.json`，`.claude/settings.local.json`，`.claude/hooks/syntax-check.py`，`.gitignore` を含む）を更新します．
 
@@ -165,7 +147,7 @@ python ~/claude-dotfiles/scripts/setup.py --codex
 $init-project ahk
 ```
 
-この `$init-project` は Codex 上の入口名で，実際の scaffold 本体は Python から呼ぶ `~/.claude/scripts/init-project.py -t codex-main <preset>` です．
+`$init-project` は Codex skill の呼び出し名．実体は Python script `~/.claude/scripts/init-project.py -t codex-main <preset>` で，この skill はそれを呼ぶラッパー．
 
 既存プロジェクトの `.agents` workflow asset を更新:
 
@@ -174,7 +156,7 @@ $init-project ahk     # smart mode: manifest 検出 → update に自動遷移
 $init-project         # preset も manifest から復元（引数省略）
 ```
 
-初期化後の主な入口:
+初期化後に使う repo-local skill（Codex から `$<name>` で呼ぶ）:
 
 - `.agents/skills/codex-research` — コードベース調査
 - `.agents/skills/codex-plan` — plan/tasks 作成
@@ -186,7 +168,7 @@ $init-project         # preset も manifest から復元（引数省略）
   `.agents/context/_codex_input.tmp` に入力を束ね，中間結果は `.agents/context/codex_impl_review.md` に保存
 - `.agents/skills/codex-fkin-impl-cycle` — task-slice 実装と phase-aware review cycle の自動周回（alignment → verification → quality を Python runner で収束）
 - `.agents/skills/handover-skills` — 長い cycle の handover 整理
-- review runner の正規実行経路は `<python-launcher> scripts/run-codex-*.py ...`
+- review runner は `python scripts/run-codex-*.py ...` で実行する
 - review runner の `codex review` 実行には既定で 600 秒の timeout がある．長い review だけ `--review-timeout-sec <seconds>` で延長できる
 - review runner は 1 実行 = 1 cycle の機械処理だけを担う
 - `.agents/skills/codex-review` — 単発レビュー
@@ -203,10 +185,10 @@ $init-project → $codex-research → $codex-plan
 
 補足:
 
-- `$...` は Codex から呼ぶ skill / 入口名
+- `$<name>` は Codex から呼ぶ skill 名（例: `$codex-research`）
 - `codex-main` の実ファイル生成は `init-project.py` が担当
 - `codex-main` の review 系は `.agents/skills/*` と `.agents/prompts/*` を使う運用で，Claude Code の `/...` コマンドとは別系統
-- Windows で `codex-plan-review` / `codex-impl-review` の runner を更新したい場合は `<python-launcher> ~/.claude/scripts/init-project.py --update` か `/init-project --update` を使うと，plugin prompt warning の自動補正，`windows.sandbox="unelevated"` への fallback，`--review-timeout-sec` 対応，末尾 `VERDICT:` の厳格判定が反映される
+- Windows で `codex-plan-review` / `codex-impl-review` の runner を更新したい場合は `python ~/.claude/scripts/init-project.py --update` か `/init-project --update` を使うと，plugin prompt warning の自動補正，`windows.sandbox="unelevated"` への fallback，`--review-timeout-sec` 対応，末尾 `VERDICT:` の厳格判定が反映される
 
 ## codex-plugin-cc のインストール（Claude Code から `/codex:*` を使う場合に推奨）
 
