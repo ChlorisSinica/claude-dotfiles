@@ -42,9 +42,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("-f", "--force", action="store_true", help="Overwrite managed files that already exist.")
     parser.add_argument("--codex", action="store_true", help="Also install Codex global skills into ~/.codex/skills.")
     parser.add_argument("--statusline", action="store_true", help="Also install the Claude Code custom statusline.")
-    parser.add_argument("--source-root", help="Override the source repo root. Defaults to the current script's repo.")
-    parser.add_argument("--claude-dir", help="Override ~/.claude destination.")
-    parser.add_argument("--codex-dir", help="Override ~/.codex destination.")
+    # Internal / test-only overrides, hidden from --help. Prefer CLAUDE_DOTFILES_SOURCE_ROOT env var for source repo location.
+    parser.add_argument("--source-root", help=argparse.SUPPRESS)
+    parser.add_argument("--claude-dir", help=argparse.SUPPRESS)
+    parser.add_argument("--codex-dir", help=argparse.SUPPRESS)
     return parser.parse_args(argv)
 
 
@@ -86,7 +87,7 @@ def write_source_metadata(claude_dir: Path, repo_root: Path) -> None:
     )
 
 
-def resolve_repo_root(source_root: str | None, *, claude_dir: Path | None = None) -> Path:
+def resolve_repo_root(source_root: str | None = None, *, claude_dir: Path | None = None) -> Path:
     if source_root:
         candidate = Path(source_root).expanduser().resolve()
         if looks_like_source_repo_root(candidate):
@@ -108,7 +109,7 @@ def resolve_repo_root(source_root: str | None, *, claude_dir: Path | None = None
     if looks_like_source_repo_root(script_root_candidate):
         return script_root_candidate
     raise FileNotFoundError(
-        "Could not locate the claude-dotfiles source repo. Pass --source-root, set CLAUDE_DOTFILES_SOURCE_ROOT, "
+        "Could not locate the claude-dotfiles source repo. Set CLAUDE_DOTFILES_SOURCE_ROOT "
         "or keep a valid clone at ~/claude-dotfiles."
     )
 

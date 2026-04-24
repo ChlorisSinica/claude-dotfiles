@@ -1,4 +1,4 @@
 interface:
-  display_name: "Update Workflow Codex"
-  short_description: "Refresh repo-local Codex workflow assets"
-  default_prompt: "Refresh the codex-main workflow assets for this repository while preserving local context files."
+  display_name: "Update Workflow Codex (deprecated)"
+  short_description: "Deprecated alias for $update-workflow"
+  default_prompt: "Deprecated. Use $update-workflow instead. This alias still refreshes codex-main workflow assets."

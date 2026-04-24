@@ -74,7 +74,11 @@ class SetupRunnerTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertTrue((self.claude_dir / "scripts" / "setup.py").is_file())
         self.assertTrue((self.claude_dir / "scripts" / "init-project.py").is_file())
+        self.assertTrue((self.codex_dir / "skills" / "init-project" / "SKILL.md").is_file())
+        self.assertTrue((self.codex_dir / "skills" / "update-workflow" / "SKILL.md").is_file())
+        # Deprecation stubs for old names must still ship so existing installs keep working.
         self.assertTrue((self.codex_dir / "skills" / "init-project-codex" / "SKILL.md").is_file())
+        self.assertTrue((self.codex_dir / "skills" / "update-workflow-codex" / "SKILL.md").is_file())
         metadata = self.runner.read_json_file(self.claude_dir / self.runner.SOURCE_METADATA_NAME)
         self.assertEqual(metadata["source_root"], str(REPO_ROOT.resolve()))
         self.assertFalse(stale_script.exists())
@@ -95,7 +99,7 @@ class SetupRunnerTests(unittest.TestCase):
         )
         self.runner.write_manifest(
             self.codex_dir / "skills" / self.runner.MANIFEST_NAME,
-            {Path("init-project-codex/SKILL.md")},
+            {Path("init-project/SKILL.md")},
         )
 
         exit_code = self.runner.main(

@@ -1,39 +1,23 @@
 ---
 name: init-project-codex
-description: Initialize the current repository for Codex-first work using the codex-main scaffold from this dotfiles setup. Use when the user wants to bootstrap `.agents/` skills, context folders, review storage, and verification helpers for a project, such as "initialize this repo for Codex", "set up codex-main", or "scaffold the project workflow".
+description: (Deprecated alias) Forwards to $init-project. Kept for backward compatibility after the `-codex` suffix was dropped. Behavior is identical to $init-project — runs the codex-main scaffold from this dotfiles setup.
 ---
 
-# Init Project Codex
+# Init Project Codex (Deprecated Alias)
 
-Run the codex-main project scaffold in the current repository.
+This skill was renamed to `$init-project`. The `-codex` suffix was dropped because the `$` prefix already indicates this is a Codex skill.
 
-## Typical Invocations
+The current invocation still works for backward compatibility, but please migrate:
 
-- `$init-project-codex ahk`
-- `$init-project-codex python-pytorch`
-- `Use $init-project-codex to initialize this repo for TypeScript`
-- `Set up codex-main for this repository with the rust preset`
-
-## Input Interpretation
-
-- Treat the user text after the skill name as the desired preset when it matches a known preset.
-- Supported presets:
-  - `python`
-  - `python-pytorch`
-  - `typescript`
-  - `rust`
-  - `ahk`
-  - `ahk-v2`
-  - `cpp-msvc`
-  - `unity`
-  - `blender`
-- If the preset is missing, infer it from the repository when possible.
-- If AutoHotkey is detected but version is ambiguous, ask only that one clarifying question.
+- `$init-project-codex <preset>` → `$init-project <preset>`
 
 ## Workflow
 
-1. Determine the preset.
-   Prefer explicit user input. If omitted, infer from the repository:
+Tell the user once: "`$init-project-codex` is a deprecated alias; use `$init-project` going forward."
+
+Then run the same workflow as `$init-project`:
+
+1. Determine the preset (prefer explicit user input; infer from repo otherwise):
    - `.py` -> `python`
    - `.ts` or `.tsx` -> `typescript`
    - `.rs` -> `rust`
@@ -43,37 +27,12 @@ Run the codex-main project scaffold in the current repository.
    - `.blend` -> `blender`
 2. Run:
    ```text
-   <python-launcher> ~/.claude/scripts/init-project.py --codex-main <preset>
+   <python-launcher> ~/.claude/scripts/init-project.py -t codex-main <preset>
    ```
    Use a Python 3.11+ launcher such as `python`, `python3`, or `py -3`.
 3. If the user explicitly wants overwrite behavior, rerun with `-f`.
-4. Report the key generated assets:
-   - `.agents/skills/`
-   - `.agents/context/`
-   - `.agents/reviews/`
-   - `scripts/run-verify.py`
-   - `scripts/run-codex-plan-review.py`
-   - `scripts/run-codex-impl-review.py`
-   - `scripts/run-codex-impl-cycle.py`
-
-## Output
-
-Tell the user:
-
-- which preset was used
-- which top-level assets were created
-- that repo-local workflow skills now live under `.agents/skills/`
-- that newly created repo-local skills may require reopening the Codex / Claude session before they become selectable
-- the next suggested entry skills:
-  - `.agents/skills/codex-research`
-  - `.agents/skills/codex-plan`
-  - `.agents/skills/codex-plan-review`
-  - `.agents/skills/codex-implement`
-  - `.agents/skills/codex-impl-review`
-  - `.agents/skills/handover-skills` (for long review / recovery cycles)
 
 ## Rules
 
-- This skill is a thin bootstrapper. Do not invent files manually when the scaffold script can generate them.
-- Prefer the codex-main scaffold over Claude-oriented templates unless the user explicitly asks for `.claude/` workflow files.
-- If `~/.claude/scripts/init-project.py` is missing, tell the user to refresh the installed workflow assets before retrying.
+- This file exists only as a migration shim. Do not add new features here — update `$init-project` instead.
+- Once users have migrated, this stub can be removed in a future release.
