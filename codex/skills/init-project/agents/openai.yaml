@@ -1,4 +1,4 @@
 interface:
-  display_name: "Init Project Codex"
-  short_description: "Scaffold a Codex-first project"
-  default_prompt: "Initialize this repository for Codex-first work using the codex-main scaffold."
+  display_name: "Init Project (Codex-first)"
+  short_description: "Scaffold or refresh a codex-main project (smart mode)"
+  default_prompt: "Scaffold or refresh this repository for Codex-first work using the codex-main scaffold. The runner auto-detects init vs update from the manifest."

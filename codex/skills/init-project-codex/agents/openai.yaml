@@ -1,4 +1,0 @@
-interface:
-  display_name: "Init Project Codex (deprecated)"
-  short_description: "Deprecated alias for $init-project"
-  default_prompt: "Deprecated. Use $init-project instead. This alias still runs the codex-main scaffold."

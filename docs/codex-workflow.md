@@ -22,27 +22,26 @@ python scripts/setup.py -f --codex
 
 ## グローバル skill
 
-- `init-project` — Codex-first scaffold の作成（旧名: `init-project-codex`）
-- `update-workflow` — 既存 `.agents` workflow asset の更新（旧名: `update-workflow-codex`）
+- `init-project` — Codex-first scaffold の作成・更新（smart mode）．Bundle 2 で単一入口に統合（旧 `update-workflow-codex` / `init-project-codex` は廃止）
 
 ## 仕様整理
 
 `codex-main` は次の 3 層で構成します．
 
 - global 入口
-  - `$init-project`
-  - `$update-workflow`
+  - `$init-project`（smart: manifest 有なら update，無なら init）
   - 必要なら Claude Code から `/init-project -t codex-main ...`
 - Python 本体
   - `codex-main` の正規実装は `~/.claude/scripts/init-project.py`
-  - 新規作成は `-t codex-main <preset>`
-  - 既存 repo 更新は `-t codex-main <preset> --workflow-only -f`
-  - `--codex-main` は deprecated alias（stderr に警告）
+  - 新規作成: `-t codex-main <preset>`
+  - 既存 repo 更新: 引数省略で smart update，または `--update` 明示
+  - 強制 re-init: `--fresh`
+  - preset mismatch: exit code 3 + WARNING．承認は `--accept-preset-change`
 - repo-local workflow
   - 調査，計画，実装は `.agents/skills/*` と `.agents/prompts/*`
   - review / verify の機械処理だけ `scripts/run-codex-*.py` と `scripts/run-verify.py`
 
-要するに，`$...` は入口，`.py` は scaffold / update 本体，日々の開発フローは repo-local の `.agents/` で回す構成です．
+要するに，`$init-project` は単一入口，`.py` は scaffold / update 本体，日々の開発フローは repo-local の `.agents/` で回す構成です．
 
 ## 最短フロー
 
@@ -52,17 +51,19 @@ python scripts/setup.py -f --codex
 $init-project ahk
 ```
 
-既存プロジェクトの更新:
+既存プロジェクトの更新（smart mode）:
 
 ```text
-$update-workflow ahk
+$init-project ahk   # preset 引数 → update + preset 確認
+$init-project       # 引数省略 → manifest tag から復元
 ```
 
 Python から直接呼ぶ場合:
 
 ```text
-<python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk
-<python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk --workflow-only -f
+<python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk    # 新規 scaffold
+<python-launcher> ~/.claude/scripts/init-project.py --update              # 既存 refresh
+<python-launcher> ~/.claude/scripts/init-project.py ahk --fresh           # 強制 re-init
 ```
 
 注意:
@@ -102,7 +103,7 @@ $init-project → $codex-research → $codex-plan
 
 補足:
 
-- 既存 repo の更新から始めるときは `$init-project` の代わりに `$update-workflow`
+- 既存 repo の更新も `$init-project`（smart mode で update に遷移）．`$update-workflow` は Bundle 2 で廃止
 - 小さな修正では `$codex-research` や `$codex-review` を軽量化してよい
 
 ## 責務分担
@@ -153,7 +154,7 @@ $init-project → $codex-research → $codex-plan
 ## Troubleshooting
 
 - plugin manifest の warning `ignoring interface.defaultPrompt: prompt must be at most 128 characters` は，最新の Python review runner と `scripts/setup.py --codex` が `fix_codex_plugin_prompts.py` を best-effort 実行して抑制する
-- `CreateProcessAsUserW failed: 5` / `windows sandbox: runner error` が出る場合，最新の review runner は `windows.sandbox="unelevated"` で自動再試行する．古い project runner では fallback がないため，`/update-workflow -t codex-main <preset>` または `<python-launcher> ~/.claude/scripts/init-project.py -t codex-main <preset> --workflow-only -f` で runner を更新する
+- `CreateProcessAsUserW failed: 5` / `windows sandbox: runner error` が出る場合，最新の review runner は `windows.sandbox="unelevated"` で自動再試行する．古い project runner では fallback がないため，`/init-project --update` または `<python-launcher> ~/.claude/scripts/init-project.py --update` で runner を更新する
 - review 本文の `VERDICT:` は最後の非空行だけを有効扱いにする．warning や補足文で末尾が汚れた場合は fallback verdict を補って保存する
 - `plugins/* 403 Forbidden` や shell snapshot warning は本文に混ぜないように分離するが，Codex 本体側の warning なので実行時間そのものは短縮しない．小規模 review で 10 分を超える場合は warning より backend 側または sandbox 初回失敗の影響を疑う
 

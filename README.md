@@ -33,8 +33,7 @@ python ~/claude-dotfiles/scripts/setup.py -f --codex
 
 `~/.claude/` に以下がインストールされます:
 
-- `commands/init-project.md` — `/init-project` グローバルコマンド
-- `commands/update-workflow.md` — 既存プロジェクトの workflow files 更新コマンド
+- `commands/init-project.md` — `/init-project` グローバルコマンド（smart mode で init / update を自動判定）
 - `templates/project-init/` — 開発プロジェクト初期化テンプレート
 - `templates/research-survey/` — 研究サーベイ用テンプレート
 - `templates/codex-main/` — Codex-first プロジェクト用テンプレート
@@ -42,10 +41,9 @@ python ~/claude-dotfiles/scripts/setup.py -f --codex
 - `scripts/setup.py` — Python ベースの install / sync エントリポイント
 - `scripts/survey-convert.py` — Markdown → LaTeX 変換スクリプト
 
-`setup.py --codex` を使うと，さらに `~/.codex/skills/` に以下の global skills が入ります:
+`setup.py --codex` を使うと，さらに `~/.codex/skills/` に以下の global skill が入ります:
 
-- `init-project` — Codex から `codex-main` scaffold を作る入口（旧名: `init-project-codex`）
-- `update-workflow` — 既存の Codex-first workflow asset を更新する入口（旧名: `update-workflow-codex`）
+- `init-project` — Codex から `codex-main` scaffold の作成・更新（smart mode）を行う入口
 
 また，既知の plugin manifest warning を減らすために `fix_codex_plugin_prompts.py` を best-effort で実行します．
 
@@ -72,23 +70,27 @@ python scripts/setup.py -f --codex  # Claude + Codex 用ファイルを上書き
 
 ### 入口対応表
 
+`/init-project`（と Codex 側 `$init-project`）は **smart mode** で init と workflow update を自動判定します．旧 `/update-workflow` / `/update-skills` / `$update-workflow` は Bundle 2 で削除されました．
+
 | 操作 | Claude Code | Codex | Python 直叩き |
 |---|---|---|---|
-| 新規 scaffold（Claude-first） | `/init-project <preset>` | — | `python ~/.claude/scripts/init-project.py -t project-init <preset>` |
+| 新規 scaffold（Claude-first，default） | `/init-project <preset>` | — | `python ~/.claude/scripts/init-project.py <preset>` |
 | 新規 scaffold（Codex-first） | `/init-project -t codex-main <preset>` | `$init-project <preset>` | `python ~/.claude/scripts/init-project.py -t codex-main <preset>` |
-| 新規 scaffold（研究サーベイ） | `/init-project survey-cv`（自動判定）| — | `python ~/.claude/scripts/init-project.py -t research-survey <preset>` |
-| workflow 更新（Claude-first） | `/update-workflow <preset>` | — | 上記 + `--workflow-only -f` |
-| workflow 更新（Codex-first） | `/update-workflow -t codex-main <preset>` | `$update-workflow <preset>` | 上記 + `--workflow-only -f` |
+| 新規 scaffold（研究サーベイ） | `/init-project survey-cv`（preset 名から自動判定）| — | `python ~/.claude/scripts/init-project.py survey-cv` |
+| workflow 更新（smart） | `/init-project <preset>`（manifest 有）または引数無 | `$init-project <preset>` / bare | 上記と同じ．manifest 検出で update mode に自動遷移 |
+| workflow 更新を明示 | `/init-project <preset> --update` | `$init-project <preset> --update` | `... init-project.py <preset> --update` |
+| 強制 re-init（全上書き） | `/init-project <preset> --fresh` | `$init-project <preset> --fresh` | `... init-project.py <preset> --fresh` |
 
 - `$` は Codex から呼ぶ skill，`/` は Claude Code から呼ぶ slash command．
 - Codex 側の skill は codex-main 専用（Claude-first / 研究サーベイは Claude Code 側から呼ぶ）．
-- `--codex-main` は後方互換用 deprecated alias．`-t codex-main` に置き換えを推奨．
+- preset mismatch 検出時は exit code 3．`--accept-preset-change` で非対話承認．
+- 既存 scaffold で別 template に切り替えたい場合は手動で `rm -rf .claude .agents` してから再 init．
 
 全体仕様は次の 3 層です．
 
 - global 入口
-  - Claude Code の `/init-project`, `/update-workflow`
-  - Codex の `$init-project`, `$update-workflow`
+  - Claude Code の `/init-project`
+  - Codex の `$init-project`
 - Python 本体
   - `codex-main` の正規実装は `~/.claude/scripts/init-project.py`
   - 入口は最終的にこの `.py` を呼ぶ
@@ -105,52 +107,47 @@ Python 直実行時の注意:
 ### Claude Code
 
 ```
-/init-project python-pytorch
-```
-
-既存プロジェクトで workflow files だけ更新:
-
-```
-/update-workflow python-pytorch
+/init-project python-pytorch               # 新規 or 既存 refresh（smart）
+/init-project                               # manifest 有なら preset 復元で refresh
+/init-project python-pytorch --update       # update mode 強制
+/init-project python-pytorch --fresh        # 全 overwrite で再 init
 ```
 
 ### Codex
 
 ```
-$init-project python
+$init-project python                        # 新規 or 既存 refresh（smart, codex-main）
+$init-project                               # manifest 有なら preset 復元で refresh
+$init-project python --update               # update 強制
+$init-project python --fresh                # 全 overwrite で再 init
 ```
-
-既存プロジェクトの Codex workflow asset を更新:
-
-```
-$update-workflow python
-```
-
-旧名 `$init-project-codex` / `$update-workflow-codex` も **deprecation stub として** 配布されます．stub は呼び出されたときに「新名への移行」を案内した上で，内部的には新名と同じ scaffold コマンドを実行します（`$` prefix があれば Codex 呼び出しなので `-codex` suffix は冗長という判断で rename．既存ユーザが壊れないよう shim を残しています）．
 
 ### Python 直実行
 
-新規 Codex-first scaffold:
-
 ```text
-<python-launcher> ~/.claude/scripts/init-project.py -t codex-main python
+<python-launcher> ~/.claude/scripts/init-project.py [-t <template>] [<preset>] [--update | --fresh] [--accept-preset-change]
 ```
 
-既存 Codex-first repo の workflow 更新:
+`<python-launcher>` には `python`, `python3`, `py -3` など Python 3.11+ の launcher．代表例:
 
-```text
-<python-launcher> ~/.claude/scripts/init-project.py -t codex-main python --workflow-only -f
-```
-
-`<python-launcher> ~/.claude/scripts/init-project.py -t codex-main <preset>` を実行すると，`.agents/` を主軸とした Codex-first scaffold を生成します．ランタイム設定だけは `.claude/settings.json` と `.claude/settings.local.json.bak` に出力されます．テンプレート定義自体は従来どおり `~/.claude/templates/` から配布されます．`<python-launcher>` には `python`, `python3`, `py -3` など，その環境で使える Python 3.11+ launcher を入れます．
+- 新規 Codex-first scaffold:
+  ```text
+  <python-launcher> ~/.claude/scripts/init-project.py -t codex-main python
+  ```
+- 既存 scaffold の workflow 更新（smart mode，引数省略可）:
+  ```text
+  <python-launcher> ~/.claude/scripts/init-project.py
+  ```
+- 強制 re-init:
+  ```text
+  <python-launcher> ~/.claude/scripts/init-project.py python --fresh
+  ```
 
 旧 `.ps1` / `.sh` runner は `scripts/_legacy/` に退避してあり，新規運用では使用しません．
 
-`/init-project -t codex-main <preset>` は Claude Code から同じ処理を呼ぶための互換入口です．`--codex-main` は deprecated alias（stderr に警告が出るが動作は等価）．
-
-`/update-workflow` は `.claude/context/` と `.claude/agents/sessions.json` を保持しつつ，template-managed files と generated workflow files（`.claude/CLAUDE.md`，`.claude/settings.json`，`.claude/settings.local.json`，`.claude/hooks/syntax-check.py`，`.gitignore` を含む）を更新します．
-
 生成される主な資産は `.agents/skills/`, `.agents/context/`, `.agents/reviews/`, `.claude/settings.json`, `.claude/settings.local.json.bak`, `scripts/run-verify.py`, `scripts/run-codex-plan-review.py`, `scripts/run-codex-impl-review.py`, `scripts/run-codex-impl-cycle.py`, `scripts/fix_codex_plugin_prompts.py` です．
+
+`/init-project` の smart update は `.claude/context/`，`.agents/context/`，`.agents/reviews/`，`.claude/agents/sessions.json` を保持しつつ，template-managed files と generated workflow files（`.claude/CLAUDE.md`，`.claude/settings.json`，`.claude/settings.local.json`，`.claude/hooks/syntax-check.py`，`.gitignore` を含む）を更新します．
 
 新しく展開された repo-local commands / skills は，起動中の Claude Code / Codex セッションには即時反映されないことがあります．使えない場合は一度セッションを開き直すか，アプリを再起動してください．
 
@@ -173,7 +170,8 @@ $init-project ahk
 既存プロジェクトの `.agents` workflow asset を更新:
 
 ```text
-$update-workflow ahk
+$init-project ahk     # smart mode: manifest 検出 → update に自動遷移
+$init-project         # preset も manifest から復元（引数省略）
 ```
 
 初期化後の主な入口:
@@ -208,7 +206,7 @@ $init-project → $codex-research → $codex-plan
 - `$...` は Codex から呼ぶ skill / 入口名
 - `codex-main` の実ファイル生成は `init-project.py` が担当
 - `codex-main` の review 系は `.agents/skills/*` と `.agents/prompts/*` を使う運用で，Claude Code の `/...` コマンドとは別系統
-- Windows で `codex-plan-review` / `codex-impl-review` の runner を更新したい場合は `<python-launcher> ~/.claude/scripts/init-project.py -t codex-main <preset> --workflow-only -f` か `/update-workflow -t codex-main <preset>` を使うと，plugin prompt warning の自動補正，`windows.sandbox="unelevated"` への fallback，`--review-timeout-sec` 対応，末尾 `VERDICT:` の厳格判定が反映される
+- Windows で `codex-plan-review` / `codex-impl-review` の runner を更新したい場合は `<python-launcher> ~/.claude/scripts/init-project.py --update` か `/init-project --update` を使うと，plugin prompt warning の自動補正，`windows.sandbox="unelevated"` への fallback，`--review-timeout-sec` 対応，末尾 `VERDICT:` の厳格判定が反映される
 
 ## codex-plugin-cc のインストール（Claude Code から `/codex:*` を使う場合に推奨）
 

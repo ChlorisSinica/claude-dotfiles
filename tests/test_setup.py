@@ -75,10 +75,11 @@ class SetupRunnerTests(unittest.TestCase):
         self.assertTrue((self.claude_dir / "scripts" / "setup.py").is_file())
         self.assertTrue((self.claude_dir / "scripts" / "init-project.py").is_file())
         self.assertTrue((self.codex_dir / "skills" / "init-project" / "SKILL.md").is_file())
-        self.assertTrue((self.codex_dir / "skills" / "update-workflow" / "SKILL.md").is_file())
-        # Deprecation stubs for old names must still ship so existing installs keep working.
-        self.assertTrue((self.codex_dir / "skills" / "init-project-codex" / "SKILL.md").is_file())
-        self.assertTrue((self.codex_dir / "skills" / "update-workflow-codex" / "SKILL.md").is_file())
+        # Bundle 2 dropped the separate update-workflow skill and the deprecation stubs.
+        # `$init-project` is now the single entry point (smart mode).
+        self.assertFalse((self.codex_dir / "skills" / "update-workflow" / "SKILL.md").exists())
+        self.assertFalse((self.codex_dir / "skills" / "init-project-codex" / "SKILL.md").exists())
+        self.assertFalse((self.codex_dir / "skills" / "update-workflow-codex" / "SKILL.md").exists())
         metadata = self.runner.read_json_file(self.claude_dir / self.runner.SOURCE_METADATA_NAME)
         self.assertEqual(metadata["source_root"], str(REPO_ROOT.resolve()))
         self.assertFalse(stale_script.exists())

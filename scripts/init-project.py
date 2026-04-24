@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 import os
 import re
@@ -35,13 +36,38 @@ CODEX_ONLY_RUNNERS = tuple(name for name in RUNNER_FILES if name != "run-verify.
 WORKFLOW_MANIFEST_NAME = ".claude-dotfiles-managed.json"
 
 
+@dataclass
+class WorkflowManifestData:
+    managed: set[str]
+    preset: str | None = None
+    template: str | None = None
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Initialize the current repository with the codex-main Python-first scaffold.")
-    parser.add_argument("--codex-main", action="store_true")
-    parser.add_argument("-t", "--template")
+    parser.add_argument(
+        "-t",
+        "--template",
+        default=None,
+        help="Template name: project-init (default), codex-main, research-survey",
+    )
     parser.add_argument("preset", nargs="?")
-    parser.add_argument("-f", "--force", action="store_true")
-    parser.add_argument("--workflow-only", action="store_true")
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--update",
+        action="store_true",
+        help="Force update mode. Refreshes managed files while preserving context/ and user-added files.",
+    )
+    mode_group.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Force fresh init. Overwrites all files (managed and unmanaged) with the new scaffold.",
+    )
+    parser.add_argument(
+        "--accept-preset-change",
+        action="store_true",
+        help="Non-interactively accept changing the preset recorded in the manifest.",
+    )
     return parser.parse_args(argv)
 
 
@@ -98,16 +124,34 @@ def substitute_content(content: str, preset: dict[str, Any]) -> str:
     return result
 
 
-def should_skip_template_file(relative_path: str, *, workflow_only: bool, workflow_root: str) -> bool:
+def should_skip_template_file(relative_path: str, *, workflow_only: bool, skills_only: bool, workflow_root: str) -> bool:
     normalized = relative_path.replace("\\", "/")
     if workflow_root == ".agents" and normalized == "prompts/codex_impl_review.md":
         # Fresh codex-main scaffolds rebuild the legacy prompt from the split prompt parts.
         return True
+    if skills_only:
+        return workflow_root == ".agents" and not normalized.startswith("skills/")
     if workflow_only:
         if workflow_root == ".agents":
             return normalized.startswith("context/") or normalized.startswith("reviews/")
         return normalized.startswith("context/") or normalized == "agents/sessions.json"
     return False
+
+
+class InitCollisionError(RuntimeError):
+    """Raised when init mode detects files at template paths without a manifest."""
+
+    def __init__(self, collisions: list[str]):
+        self.collisions = collisions
+        preview = "\n".join(f"  - {p}" for p in collisions[:10])
+        suffix = "" if len(collisions) <= 10 else f"\n  ... and {len(collisions) - 10} more"
+        super().__init__(
+            "init mode cannot proceed: existing files at template paths without a scaffold manifest.\n"
+            f"{preview}{suffix}\n"
+            "Resolve by either:\n"
+            "  (a) removing the colliding files and re-running, or\n"
+            "  (b) re-running with --fresh to overwrite them."
+        )
 
 
 def copy_template_tree(
@@ -117,16 +161,42 @@ def copy_template_tree(
     *,
     force: bool,
     workflow_only: bool,
+    skills_only: bool,
     workflow_root: str,
     previously_managed: set[str] | None = None,
+    overwrite_unmanaged: bool = False,
 ) -> set[str]:
+    """Copy template files to destination, respecting the active mode.
+
+    - `force=False` (init mode): raise InitCollisionError if any template path is
+      already occupied by an unmanaged file.
+    - `force=True, overwrite_unmanaged=False` (update mode): overwrite files tracked
+      in `previously_managed`, keep user-owned collisions at template paths.
+    - `force=True, overwrite_unmanaged=True` (fresh mode): overwrite everything at
+      template paths regardless of manifest tracking (nuclear re-init).
+    """
     previously_managed = previously_managed or set()
     expected: set[str] = set()
+
+    if not force:
+        collisions: list[str] = []
+        for src in template_workflow_dir.rglob("*"):
+            if not src.is_file():
+                continue
+            rel = src.relative_to(template_workflow_dir).as_posix()
+            if should_skip_template_file(rel, workflow_only=workflow_only, skills_only=skills_only, workflow_root=workflow_root):
+                continue
+            dst = dest_workflow_dir / rel
+            if dst.exists() and rel not in previously_managed:
+                collisions.append(f"{workflow_root}/{rel}")
+        if collisions:
+            raise InitCollisionError(sorted(collisions))
+
     for src in template_workflow_dir.rglob("*"):
         if not src.is_file():
             continue
         rel = src.relative_to(template_workflow_dir).as_posix()
-        if should_skip_template_file(rel, workflow_only=workflow_only, workflow_root=workflow_root):
+        if should_skip_template_file(rel, workflow_only=workflow_only, skills_only=skills_only, workflow_root=workflow_root):
             continue
         dst = dest_workflow_dir / rel
         if dst.exists():
@@ -134,7 +204,7 @@ def copy_template_tree(
                 if rel in previously_managed:
                     expected.add(rel)
                 continue
-            if rel not in previously_managed:
+            if rel not in previously_managed and not overwrite_unmanaged:
                 continue
         try:
             content = substitute_content(read_text(src), preset)
@@ -146,26 +216,124 @@ def copy_template_tree(
     return expected
 
 
-def read_workflow_manifest(path: Path) -> set[str]:
+def read_workflow_manifest_data(path: Path) -> WorkflowManifestData:
     if not path.is_file():
-        return set()
+        return WorkflowManifestData(managed=set())
     try:
         data = json.loads(read_text(path))
     except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
         raise RuntimeError(f"Unable to read workflow manifest: {path}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Workflow manifest has invalid structure: {path}")
     entries = data.get("managed", [])
     if not isinstance(entries, list):
         raise RuntimeError(f"Workflow manifest has invalid structure: {path}")
-    return {str(item) for item in entries if isinstance(item, str) and item}
+    preset = data.get("preset")
+    template = data.get("template")
+    return WorkflowManifestData(
+        managed={str(item) for item in entries if isinstance(item, str) and item},
+        preset=preset if isinstance(preset, str) and preset else None,
+        template=template if isinstance(template, str) and template else None,
+    )
 
 
-def write_workflow_manifest(path: Path, entries: set[str]) -> None:
-    write_text(path, json.dumps({"managed": sorted(entries)}, ensure_ascii=False, indent=2) + "\n")
+def detect_active_template(repo_root: Path) -> tuple[str | None, str | None, bool]:
+    """Return (active_template, manifest_preset, legacy_uninferable).
+
+    - `(None, None, False)`: no manifest at all → init mode
+    - `(<template>, <preset>, False)`: tagged manifest (new schema) → preset may be None
+    - `(<inferred_template>, None, False)`: legacy manifest, template inferred from managed paths
+    - `(None, None, True)`: legacy manifest present but template could not be inferred
+
+    Parse errors are tolerated per-file: a readable manifest is used even if the
+    other one is corrupt.  Only when **all present manifests fail to parse** does
+    the function raise — the caller is responsible for routing that error (e.g.
+    --fresh should fall back to None/None rather than abort).
+    """
+    agents_manifest = repo_root / ".agents" / WORKFLOW_MANIFEST_NAME
+    claude_manifest = repo_root / ".claude" / WORKFLOW_MANIFEST_NAME
+
+    agents_data: WorkflowManifestData | None = None
+    claude_data: WorkflowManifestData | None = None
+    agents_parse_error: Exception | None = None
+    claude_parse_error: Exception | None = None
+
+    if claude_manifest.is_file():
+        try:
+            claude_data = read_workflow_manifest_data(claude_manifest)
+        except RuntimeError as exc:
+            claude_parse_error = exc
+    if agents_manifest.is_file():
+        try:
+            agents_data = read_workflow_manifest_data(agents_manifest)
+        except RuntimeError as exc:
+            agents_parse_error = exc
+
+    # If all present manifests failed, surface the error so non-fresh callers can
+    # exit with guidance to use --fresh.
+    if agents_data is None and claude_data is None:
+        if agents_parse_error is not None and claude_parse_error is not None:
+            raise claude_parse_error
+        if claude_parse_error is not None:
+            raise claude_parse_error
+        if agents_parse_error is not None:
+            raise agents_parse_error
+        return None, None, False
+
+    # Authoritative: .claude/manifest.template when present (codex-main writes it too).
+    if claude_data is not None and claude_data.template:
+        return claude_data.template, claude_data.preset, False
+
+    # Legacy inference from managed paths — .agents first (unique codex-main marker).
+    if agents_data is not None and any(m.startswith("skills/") for m in agents_data.managed):
+        return "codex-main", agents_data.preset, False
+
+    # Legacy inference from .claude managed paths even if .agents is corrupt.
+    if claude_data is not None:
+        managed = claude_data.managed
+        if "commands/search.md" in managed or "commands/check-tools.md" in managed:
+            return "research-survey", claude_data.preset, False
+        if "commands/plan.md" in managed or "commands/implement.md" in managed:
+            return "project-init", claude_data.preset, False
+
+    # Manifest present but template cannot be inferred.
+    return None, None, True
 
 
-def should_preserve_workflow_file(relative_path: str, *, workflow_only: bool, workflow_root: str) -> bool:
+def read_workflow_manifest(path: Path) -> set[str]:
+    return read_workflow_manifest_data(path).managed
+
+
+def read_workflow_manifest_tolerant(path: Path) -> set[str]:
+    """Like read_workflow_manifest but returns an empty set if the manifest is
+    missing or corrupt. Intended for the --fresh recovery path where the caller
+    explicitly wants to reinitialize from scratch."""
+    try:
+        return read_workflow_manifest(path)
+    except RuntimeError:
+        return set()
+
+
+def write_workflow_manifest(
+    path: Path,
+    entries: set[str],
+    *,
+    preset: str | None = None,
+    template: str | None = None,
+) -> None:
+    data: dict[str, Any] = {"managed": sorted(entries)}
+    if preset is not None:
+        data["preset"] = preset
+    if template is not None:
+        data["template"] = template
+    write_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+
+def should_preserve_workflow_file(relative_path: str, *, workflow_only: bool, skills_only: bool, workflow_root: str) -> bool:
     normalized = relative_path.replace("\\", "/")
     if normalized == ".claude-dotfiles-managed.json":
+        return True
+    if skills_only and not normalized.startswith("skills/"):
         return True
     if workflow_root == ".agents":
         return (
@@ -186,16 +354,25 @@ def prune_workflow_tree(
     expected: set[str],
     force: bool,
     workflow_only: bool,
+    skills_only: bool,
     workflow_root: str,
+    preset_name: str | None = None,
+    template_name: str | None = None,
+    overwrite_unmanaged: bool = False,
 ) -> None:
     manifest_path = dest_workflow_dir / WORKFLOW_MANIFEST_NAME
-    previously_managed = read_workflow_manifest(manifest_path)
+    previously_managed = (
+        read_workflow_manifest_tolerant(manifest_path)
+        if overwrite_unmanaged
+        else read_workflow_manifest(manifest_path)
+    )
     if force and dest_workflow_dir.is_dir():
         for path in sorted((item for item in dest_workflow_dir.rglob("*") if item.is_file()), reverse=True):
             relative = path.relative_to(dest_workflow_dir).as_posix()
             if should_preserve_workflow_file(
                 relative,
                 workflow_only=workflow_only,
+                skills_only=skills_only,
                 workflow_root=workflow_root,
             ):
                 continue
@@ -217,11 +394,19 @@ def prune_workflow_tree(
         if should_preserve_workflow_file(
             entry,
             workflow_only=workflow_only,
+            skills_only=skills_only,
             workflow_root=workflow_root,
         )
         and (dest_workflow_dir / entry).exists()
     )
-    write_workflow_manifest(manifest_path, manifest_entries)
+    if skills_only:
+        manifest_entries.update(entry for entry in previously_managed if not entry.startswith("skills/"))
+    write_workflow_manifest(
+        manifest_path,
+        manifest_entries,
+        preset=preset_name,
+        template=template_name,
+    )
 
 
 def build_legacy_impl_review_prompt(
@@ -229,7 +414,11 @@ def build_legacy_impl_review_prompt(
     *,
     force: bool,
     previously_managed: set[str],
+    skills_only: bool,
+    overwrite_unmanaged: bool = False,
 ) -> bool:
+    if skills_only:
+        return "prompts/codex_impl_review.md" in previously_managed
     prompt_root = dest_agents_dir / "prompts" / "impl-review"
     core = prompt_root / "core.md"
     quality = prompt_root / "phases" / "quality.md"
@@ -240,8 +429,10 @@ def build_legacy_impl_review_prompt(
     legacy_path = dest_agents_dir / legacy_rel
     if legacy_path.exists():
         if not force:
-            return legacy_rel in previously_managed
-        if legacy_rel not in previously_managed:
+            if legacy_rel not in previously_managed:
+                raise InitCollisionError([f".agents/{legacy_rel}"])
+            return True
+        if legacy_rel not in previously_managed and not overwrite_unmanaged:
             return False
     parts = [read_text(core).strip(), read_text(quality).strip()]
     if preset.is_file():
@@ -250,7 +441,9 @@ def build_legacy_impl_review_prompt(
     return True
 
 
-def seed_context_files(dest_agents_dir: Path, *, force: bool, workflow_only: bool) -> None:
+def seed_context_files(dest_agents_dir: Path, *, force: bool, workflow_only: bool, skills_only: bool) -> None:
+    if skills_only:
+        return
     if workflow_only:
         return
     context_dir = dest_agents_dir / "context"
@@ -291,12 +484,39 @@ def prune_manifest_owned_paths(root: Path, managed_entries: set[str], *, keep: s
             continue
 
 
-def copy_runner_files(source_scripts_dir: Path, dest_repo_root: Path, *, force: bool) -> set[str]:
+def require_existing_codex_runners(repo_root: Path) -> None:
+    missing = [name for name in ("run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py") if not (repo_root / "scripts" / name).is_file()]
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(
+            f"--skills-only requires an existing codex-main runner set. Missing: {joined}. Run full --codex-main first."
+        )
+
+
+def copy_runner_files(
+    source_scripts_dir: Path,
+    dest_repo_root: Path,
+    *,
+    force: bool,
+    overwrite_unmanaged: bool = False,
+) -> set[str]:
     dest_scripts_dir = dest_repo_root / "scripts"
     dest_scripts_dir.mkdir(parents=True, exist_ok=True)
     expected: set[str] = set()
     manifest_path = dest_scripts_dir / WORKFLOW_MANIFEST_NAME
-    previously_managed = read_workflow_manifest(manifest_path)
+    previously_managed = (
+        read_workflow_manifest_tolerant(manifest_path)
+        if overwrite_unmanaged
+        else read_workflow_manifest(manifest_path)
+    )
+    if not force:
+        collisions = [
+            f"scripts/{name}"
+            for name in RUNNER_FILES
+            if (dest_scripts_dir / name).exists() and name not in previously_managed
+        ]
+        if collisions:
+            raise InitCollisionError(sorted(collisions))
     for name in RUNNER_FILES:
         src = source_scripts_dir / name
         if not src.is_file():
@@ -307,7 +527,7 @@ def copy_runner_files(source_scripts_dir: Path, dest_repo_root: Path, *, force: 
                 if name in previously_managed:
                     expected.add(name)
                 continue
-            if name not in previously_managed:
+            if name not in previously_managed and not overwrite_unmanaged:
                 continue
         shutil.copy2(src, dst)
         expected.add(name)
@@ -351,6 +571,39 @@ def discover_portable_python_launcher() -> str:
     raise RuntimeError(
         "Unable to find a portable Python launcher. Expected one of `py`, `python3`, or `python` on PATH."
     )
+
+
+def default_portable_python_launcher() -> str:
+    return "py -3" if os.name == "nt" else "python3"
+
+
+def infer_existing_python_launcher(repo_root: Path) -> str | None:
+    candidates = (
+        repo_root / ".agents" / "skills" / "codex-plan-review" / "SKILL.md",
+        repo_root / ".agents" / "skills" / "codex-impl-review" / "SKILL.md",
+        repo_root / ".agents" / "skills" / "codex-fkin-impl-cycle" / "SKILL.md",
+        repo_root / ".agents" / "AGENTS.md",
+    )
+    patterns = (
+        r"`([^`\r\n]+?)\s+scripts/run-codex-plan-review\.py\b",
+        r"`([^`\r\n]+?)\s+scripts/run-codex-impl-review\.py\b",
+        r"`([^`\r\n]+?)\s+scripts/run-codex-impl-cycle\.py\b",
+        r"`([^`\r\n]+?)\s+scripts/run-verify\.py\b",
+    )
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            content = read_text(path)
+        except OSError:
+            continue
+        for pattern in patterns:
+            match = re.search(pattern, content)
+            if match:
+                launcher = match.group(1).strip()
+                if launcher:
+                    return launcher
+    return None
 
 
 def materialize_verify_command(command: str, launcher: str) -> str:
@@ -428,13 +681,16 @@ def write_verify_config(
     log_dir: str,
     launcher: str,
     previously_managed: set[str],
+    overwrite_unmanaged: bool = False,
 ) -> bool:
     path = dest_repo_root / "scripts" / "verify-config.json"
     rel = "verify-config.json"
     if path.exists():
         if not force:
-            return rel in previously_managed
-        if rel not in previously_managed:
+            if rel not in previously_managed:
+                raise InitCollisionError([f"scripts/{rel}"])
+            return True
+        if rel not in previously_managed and not overwrite_unmanaged:
             return False
     command = materialize_verify_command(str(preset.get("VERIFY_CMD", "")).strip(), launcher)
     shell = materialize_verify_shell(preset)
@@ -598,38 +854,61 @@ def write_settings_files(
     *,
     force: bool,
     previously_managed: set[str],
+    overwrite_unmanaged: bool = False,
 ) -> set[str]:
     claude_dir = dest_repo_root / ".claude"
     claude_dir.mkdir(parents=True, exist_ok=True)
     settings_path = claude_dir / "settings.json"
     settings_local_bak = claude_dir / "settings.local.json.bak"
     settings_local_active = claude_dir / "settings.local.json"
+    if not force:
+        collisions: list[str] = []
+        for rel, path in (
+            ("settings.json", settings_path),
+            ("settings.local.json.bak", settings_local_bak),
+            ("settings.local.json", settings_local_active),
+        ):
+            if path.exists() and rel not in previously_managed:
+                collisions.append(f".claude/{rel}")
+        if collisions:
+            raise InitCollisionError(sorted(collisions))
     managed: set[str] = set()
 
     lang = str(preset.get("LANG", "Project"))
     verify_cmd = str(preset.get("VERIFY_CMD", "")).strip()
-    if not settings_path.exists() or (force and "settings.json" in previously_managed):
-        write_text(settings_path, json.dumps(build_settings(lang), ensure_ascii=False, indent=2) + "\n")
+    settings_content = json.dumps(build_settings(lang), ensure_ascii=False, indent=2) + "\n"
+    if not settings_path.exists():
+        write_text(settings_path, settings_content)
         managed.add("settings.json")
-    elif settings_path.exists() and "settings.json" in previously_managed:
+    elif force and ("settings.json" in previously_managed or overwrite_unmanaged):
+        write_text(settings_path, settings_content)
+        managed.add("settings.json")
+    elif "settings.json" in previously_managed:
         managed.add("settings.json")
 
     managed_local_settings = build_local_settings(verify_cmd)
     local_settings = json.dumps(managed_local_settings, ensure_ascii=False, indent=2) + "\n"
-    if not settings_local_bak.exists() or (force and "settings.local.json.bak" in previously_managed):
+    if not settings_local_bak.exists():
         write_text(settings_local_bak, local_settings)
         managed.add("settings.local.json.bak")
-    elif settings_local_bak.exists() and "settings.local.json.bak" in previously_managed:
+    elif force and ("settings.local.json.bak" in previously_managed or overwrite_unmanaged):
+        write_text(settings_local_bak, local_settings)
+        managed.add("settings.local.json.bak")
+    elif "settings.local.json.bak" in previously_managed:
         managed.add("settings.local.json.bak")
 
-    if settings_local_active.exists() and force and "settings.local.json" in previously_managed:
+    if not settings_local_active.exists():
+        write_text(settings_local_active, local_settings)
+        managed.add("settings.local.json")
+    elif force and overwrite_unmanaged:
+        # --fresh: clean overwrite regardless of manifest (nuclear option).
+        write_text(settings_local_active, local_settings)
+        managed.add("settings.local.json")
+    elif force and "settings.local.json" in previously_managed:
         merged = merge_local_settings(settings_local_active.read_text(encoding="utf-8"), managed_local_settings)
         write_text(settings_local_active, json.dumps(merged, ensure_ascii=False, indent=2) + "\n")
         managed.add("settings.local.json")
-    elif settings_local_active.exists() and "settings.local.json" in previously_managed:
-        managed.add("settings.local.json")
-    elif not settings_local_active.exists():
-        write_text(settings_local_active, local_settings)
+    elif "settings.local.json" in previously_managed:
         managed.add("settings.local.json")
     return managed
 
@@ -643,12 +922,24 @@ def write_standard_settings_files(
     syntax_enabled: bool,
     python_launcher: str,
     previously_managed: set[str],
+    overwrite_unmanaged: bool = False,
 ) -> set[str]:
     claude_dir = dest_repo_root / ".claude"
     claude_dir.mkdir(parents=True, exist_ok=True)
     settings_path = claude_dir / "settings.json"
     settings_local_bak = claude_dir / "settings.local.json.bak"
     settings_local_active = claude_dir / "settings.local.json"
+    if not force:
+        collisions: list[str] = []
+        for rel, path in (
+            ("settings.json", settings_path),
+            ("settings.local.json.bak", settings_local_bak),
+            ("settings.local.json", settings_local_active),
+        ):
+            if path.exists() and rel not in previously_managed:
+                collisions.append(f".claude/{rel}")
+        if collisions:
+            raise InitCollisionError(sorted(collisions))
     managed: set[str] = set()
 
     lang = str(preset.get("LANG", "Project")) if not is_research else str(preset.get("DOMAIN", "Research Survey"))
@@ -657,10 +948,13 @@ def write_standard_settings_files(
         ensure_ascii=False,
         indent=2,
     ) + "\n"
-    if not settings_path.exists() or (force and "settings.json" in previously_managed):
+    if not settings_path.exists():
         write_text(settings_path, settings_content)
         managed.add("settings.json")
-    elif settings_path.exists() and "settings.json" in previously_managed:
+    elif force and ("settings.json" in previously_managed or overwrite_unmanaged):
+        write_text(settings_path, settings_content)
+        managed.add("settings.json")
+    elif "settings.json" in previously_managed:
         managed.add("settings.json")
 
     managed_local_settings = build_standard_local_settings(
@@ -669,20 +963,27 @@ def write_standard_settings_files(
         python_launcher=python_launcher,
     )
     local_settings = json.dumps(managed_local_settings, ensure_ascii=False, indent=2) + "\n"
-    if not settings_local_bak.exists() or (force and "settings.local.json.bak" in previously_managed):
+    if not settings_local_bak.exists():
         write_text(settings_local_bak, local_settings)
         managed.add("settings.local.json.bak")
-    elif settings_local_bak.exists() and "settings.local.json.bak" in previously_managed:
+    elif force and ("settings.local.json.bak" in previously_managed or overwrite_unmanaged):
+        write_text(settings_local_bak, local_settings)
+        managed.add("settings.local.json.bak")
+    elif "settings.local.json.bak" in previously_managed:
         managed.add("settings.local.json.bak")
 
-    if settings_local_active.exists() and force and "settings.local.json" in previously_managed:
+    if not settings_local_active.exists():
+        write_text(settings_local_active, local_settings)
+        managed.add("settings.local.json")
+    elif force and overwrite_unmanaged:
+        # --fresh: clean overwrite regardless of manifest (nuclear option).
+        write_text(settings_local_active, local_settings)
+        managed.add("settings.local.json")
+    elif force and "settings.local.json" in previously_managed:
         merged = merge_local_settings(settings_local_active.read_text(encoding="utf-8"), managed_local_settings)
         write_text(settings_local_active, json.dumps(merged, ensure_ascii=False, indent=2) + "\n")
         managed.add("settings.local.json")
-    elif settings_local_active.exists() and "settings.local.json" in previously_managed:
-        managed.add("settings.local.json")
-    elif not settings_local_active.exists():
-        write_text(settings_local_active, local_settings)
+    elif "settings.local.json" in previously_managed:
         managed.add("settings.local.json")
     return managed
 
@@ -747,8 +1048,35 @@ def write_standard_hook_and_docs(
     is_research: bool,
     workflow_only: bool,
     previously_managed: set[str],
+    overwrite_unmanaged: bool = False,
 ) -> set[str]:
     managed: set[str] = set()
+    # Determine whether this run would write the syntax-check hook so the
+    # collision pre-check can limit itself to paths actually owned by the
+    # selected preset.  Only standard (non-research) templates with
+    # SYNTAX_CHECK_ENABLED=true and matching extensions generate the hook.
+    launcher_probe = str(preset.get("PYTHON_LAUNCHER", "")).strip()
+    syntax_cmd_probe = (
+        materialize_verify_command(str(preset.get("SYNTAX_CHECK_CMD", "")).strip(), launcher_probe)
+        if launcher_probe
+        else str(preset.get("SYNTAX_CHECK_CMD", "")).strip()
+    )
+    syntax_enabled_probe = bool(preset.get("SYNTAX_CHECK_ENABLED", False)) and bool(syntax_cmd_probe)
+    extensions_probe = get_file_extensions_from_patterns(str(preset.get("FILE_PATTERNS", "")).strip())
+    hook_will_be_written = (not is_research) and syntax_enabled_probe and bool(extensions_probe)
+
+    if not force:
+        # Pre-check collisions for the paths this helper actually writes.
+        collisions: list[str] = []
+        claude_md_path_check = dest_repo_root / ".claude" / "CLAUDE.md"
+        if claude_md_path_check.exists() and "CLAUDE.md" not in previously_managed:
+            collisions.append(".claude/CLAUDE.md")
+        if hook_will_be_written:
+            hook_path_check = dest_repo_root / ".claude" / "hooks" / "syntax-check.py"
+            if hook_path_check.exists() and "hooks/syntax-check.py" not in previously_managed:
+                collisions.append(".claude/hooks/syntax-check.py")
+        if collisions:
+            raise InitCollisionError(sorted(collisions))
     if is_research:
         domain = str(preset.get("DOMAIN", "Research Survey"))
         key_venues = str(preset.get("KEY_VENUES", "")).strip()
@@ -786,10 +1114,13 @@ def write_standard_hook_and_docs(
 - 3行目以降 (body): 日本語可。変更理由・詳細を記述
         """
         claude_md_path = dest_repo_root / ".claude" / "CLAUDE.md"
-        if not claude_md_path.exists() or force and "CLAUDE.md" in previously_managed:
+        if not claude_md_path.exists():
             write_text(claude_md_path, claude_md.rstrip() + "\n")
             managed.add("CLAUDE.md")
-        elif claude_md_path.exists() and "CLAUDE.md" in previously_managed:
+        elif force and ("CLAUDE.md" in previously_managed or overwrite_unmanaged):
+            write_text(claude_md_path, claude_md.rstrip() + "\n")
+            managed.add("CLAUDE.md")
+        elif "CLAUDE.md" in previously_managed:
             managed.add("CLAUDE.md")
         return managed
 
@@ -859,10 +1190,13 @@ if __name__ == "__main__":
     main()
 """
         hook_path = dest_repo_root / ".claude" / "hooks" / "syntax-check.py"
-        if not hook_path.exists() or force and "hooks/syntax-check.py" in previously_managed:
+        if not hook_path.exists():
             write_text(hook_path, hook_content)
             managed.add("hooks/syntax-check.py")
-        elif hook_path.exists() and "hooks/syntax-check.py" in previously_managed:
+        elif force and ("hooks/syntax-check.py" in previously_managed or overwrite_unmanaged):
+            write_text(hook_path, hook_content)
+            managed.add("hooks/syntax-check.py")
+        elif "hooks/syntax-check.py" in previously_managed:
             managed.add("hooks/syntax-check.py")
 
     failure_report = """# Failure Report
@@ -919,20 +1253,42 @@ if __name__ == "__main__":
 検証コマンド: `{verify_cmd}`
 """
     claude_md_path = dest_repo_root / ".claude" / "CLAUDE.md"
-    if not claude_md_path.exists() or force and "CLAUDE.md" in previously_managed:
+    if not claude_md_path.exists():
         write_text(claude_md_path, claude_md.rstrip() + "\n")
         managed.add("CLAUDE.md")
-    elif claude_md_path.exists() and "CLAUDE.md" in previously_managed:
+    elif force and ("CLAUDE.md" in previously_managed or overwrite_unmanaged):
+        write_text(claude_md_path, claude_md.rstrip() + "\n")
+        managed.add("CLAUDE.md")
+    elif "CLAUDE.md" in previously_managed:
         managed.add("CLAUDE.md")
     return managed
 
 
-def copy_named_runner_files(source_scripts_dir: Path, dest_repo_root: Path, names: tuple[str, ...], *, force: bool) -> set[str]:
+def copy_named_runner_files(
+    source_scripts_dir: Path,
+    dest_repo_root: Path,
+    names: tuple[str, ...],
+    *,
+    force: bool,
+    overwrite_unmanaged: bool = False,
+) -> set[str]:
     dest_scripts_dir = dest_repo_root / "scripts"
     dest_scripts_dir.mkdir(parents=True, exist_ok=True)
     expected: set[str] = set()
     manifest_path = dest_scripts_dir / WORKFLOW_MANIFEST_NAME
-    previously_managed = read_workflow_manifest(manifest_path)
+    previously_managed = (
+        read_workflow_manifest_tolerant(manifest_path)
+        if overwrite_unmanaged
+        else read_workflow_manifest(manifest_path)
+    )
+    if not force:
+        collisions = [
+            f"scripts/{name}"
+            for name in names
+            if (dest_scripts_dir / name).exists() and name not in previously_managed
+        ]
+        if collisions:
+            raise InitCollisionError(sorted(collisions))
     for name in names:
         src = source_scripts_dir / name
         if not src.is_file():
@@ -943,18 +1299,31 @@ def copy_named_runner_files(source_scripts_dir: Path, dest_repo_root: Path, name
                 if name in previously_managed:
                     expected.add(name)
                 continue
-            if name not in previously_managed:
+            if name not in previously_managed and not overwrite_unmanaged:
                 continue
         shutil.copy2(src, dst)
         expected.add(name)
     return expected
 
 
-def prune_retired_runner_files(dest_repo_root: Path, names: tuple[str, ...], *, force: bool, expected: set[str]) -> None:
+def prune_retired_runner_files(
+    dest_repo_root: Path,
+    names: tuple[str, ...],
+    *,
+    force: bool,
+    expected: set[str],
+    preset_name: str | None = None,
+    template_name: str | None = None,
+    overwrite_unmanaged: bool = False,
+) -> None:
     scripts_dir = dest_repo_root / "scripts"
     scripts_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = scripts_dir / WORKFLOW_MANIFEST_NAME
-    previously_managed = read_workflow_manifest(manifest_path)
+    previously_managed = (
+        read_workflow_manifest_tolerant(manifest_path)
+        if overwrite_unmanaged
+        else read_workflow_manifest(manifest_path)
+    )
     if force:
         retired = set(names)
         for name in names:
@@ -968,10 +1337,22 @@ def prune_retired_runner_files(dest_repo_root: Path, names: tuple[str, ...], *, 
         manifest_entries.update(
             entry for entry in previously_managed if (scripts_dir / entry).exists()
         )
-    write_workflow_manifest(manifest_path, manifest_entries)
+    write_workflow_manifest(
+        manifest_path,
+        manifest_entries,
+        preset=preset_name,
+        template=template_name,
+    )
 
 
-def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool) -> None:
+def initialize_codex_main(
+    preset_name: str,
+    *,
+    force: bool,
+    workflow_only: bool,
+    skills_only: bool,
+    overwrite_unmanaged: bool = False,
+) -> None:
     template_root = discover_template_root("codex-main")
     source_scripts_dir = discover_script_source_dir()
     presets = load_presets(template_root)
@@ -981,25 +1362,38 @@ def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool)
     if not isinstance(preset, dict):
         raise ValueError(f"Invalid preset '{preset_name}'")
     repo_root = Path.cwd().resolve()
-    launcher = discover_portable_python_launcher()
+    if skills_only:
+        require_existing_codex_runners(repo_root)
+    launcher = (
+        infer_existing_python_launcher(repo_root) or default_portable_python_launcher()
+        if skills_only
+        else discover_portable_python_launcher()
+    )
     preset["PYTHON_LAUNCHER"] = launcher
     preset["VERIFY_CMD"] = materialize_verify_command(str(preset.get("VERIFY_CMD", "")).strip(), launcher)
+    # In --fresh recovery mode (overwrite_unmanaged=True), swallow manifest parse
+    # errors so a corrupt manifest does not block reinitialization.
+    _read_manifest = read_workflow_manifest_tolerant if overwrite_unmanaged else read_workflow_manifest
     dest_agents_dir = repo_root / ".agents"
-    workflow_manifest = read_workflow_manifest(dest_agents_dir / WORKFLOW_MANIFEST_NAME)
+    workflow_manifest = _read_manifest(dest_agents_dir / WORKFLOW_MANIFEST_NAME)
     expected_workflow = copy_template_tree(
         template_root / ".agents",
         dest_agents_dir,
         preset,
         force=force,
         workflow_only=workflow_only,
+        skills_only=skills_only,
         workflow_root=".agents",
         previously_managed=workflow_manifest,
+        overwrite_unmanaged=overwrite_unmanaged,
     )
-    seed_context_files(dest_agents_dir, force=force, workflow_only=workflow_only)
+    seed_context_files(dest_agents_dir, force=force, workflow_only=workflow_only, skills_only=skills_only)
     if build_legacy_impl_review_prompt(
         dest_agents_dir,
         force=force,
         previously_managed=workflow_manifest,
+        skills_only=skills_only,
+        overwrite_unmanaged=overwrite_unmanaged,
     ):
         expected_workflow.add("prompts/codex_impl_review.md")
     prune_workflow_tree(
@@ -1007,39 +1401,71 @@ def initialize_codex_main(preset_name: str, *, force: bool, workflow_only: bool)
         expected=expected_workflow,
         force=force,
         workflow_only=workflow_only,
+        skills_only=skills_only,
         workflow_root=".agents",
+        preset_name=preset_name,
+        template_name="codex-main",
+        overwrite_unmanaged=overwrite_unmanaged,
     )
-    expected_scripts = copy_runner_files(source_scripts_dir, repo_root, force=force)
-    if write_verify_config(
-        repo_root,
-        preset,
-        force=force,
-        log_dir=".agents/logs/verify",
-        launcher=launcher,
-        previously_managed=read_workflow_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
-    ):
-        expected_scripts.add("verify-config.json")
-    prune_retired_runner_files(repo_root, RETIRED_CODEX_RUNNERS, force=force, expected=expected_scripts)
-    claude_manifest_path = repo_root / ".claude" / WORKFLOW_MANIFEST_NAME
-    previous_claude_manifest = read_workflow_manifest(claude_manifest_path)
-    settings_entries = {"settings.json", "settings.local.json.bak", "settings.local.json"}
-    if force:
-        prune_manifest_owned_paths(
-            repo_root / ".claude",
-            previous_claude_manifest,
-            keep=settings_entries,
+    if not skills_only:
+        expected_scripts = copy_runner_files(
+            source_scripts_dir,
+            repo_root,
+            force=force,
+            overwrite_unmanaged=overwrite_unmanaged,
         )
-    managed_claude = write_settings_files(
-        repo_root,
-        preset,
-        force=force,
-        previously_managed=previous_claude_manifest,
-    )
-    write_workflow_manifest(claude_manifest_path, managed_claude)
-    update_gitignore(repo_root, preset, workflow_root=".agents")
+        if write_verify_config(
+            repo_root,
+            preset,
+            force=force,
+            log_dir=".agents/logs/verify",
+            launcher=launcher,
+            previously_managed=_read_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
+            overwrite_unmanaged=overwrite_unmanaged,
+        ):
+            expected_scripts.add("verify-config.json")
+        prune_retired_runner_files(
+            repo_root,
+            RETIRED_CODEX_RUNNERS,
+            force=force,
+            expected=expected_scripts,
+            preset_name=preset_name,
+            template_name="codex-main",
+            overwrite_unmanaged=overwrite_unmanaged,
+        )
+        claude_manifest_path = repo_root / ".claude" / WORKFLOW_MANIFEST_NAME
+        previous_claude_manifest = _read_manifest(claude_manifest_path)
+        settings_entries = {"settings.json", "settings.local.json.bak", "settings.local.json"}
+        if force:
+            prune_manifest_owned_paths(
+                repo_root / ".claude",
+                previous_claude_manifest,
+                keep=settings_entries,
+            )
+        managed_claude = write_settings_files(
+            repo_root,
+            preset,
+            force=force,
+            previously_managed=previous_claude_manifest,
+            overwrite_unmanaged=overwrite_unmanaged,
+        )
+        write_workflow_manifest(
+            claude_manifest_path,
+            managed_claude,
+            preset=preset_name,
+            template="codex-main",
+        )
+        update_gitignore(repo_root, preset, workflow_root=".agents")
 
 
-def initialize_standard_template(template_name: str, preset_name: str, *, force: bool, workflow_only: bool) -> None:
+def initialize_standard_template(
+    template_name: str,
+    preset_name: str,
+    *,
+    force: bool,
+    workflow_only: bool,
+    overwrite_unmanaged: bool = False,
+) -> None:
     template_root = discover_template_root(template_name)
     source_scripts_dir = discover_script_source_dir()
     presets = load_presets(template_root)
@@ -1053,26 +1479,37 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
     preset["VERIFY_CMD"] = materialize_verify_command(str(preset.get("VERIFY_CMD", "")).strip(), launcher)
 
     repo_root = Path.cwd().resolve()
+    # In --fresh recovery mode, swallow manifest parse errors.
+    _read_manifest = read_workflow_manifest_tolerant if overwrite_unmanaged else read_workflow_manifest
     dest_claude_dir = repo_root / ".claude"
-    workflow_manifest = read_workflow_manifest(dest_claude_dir / WORKFLOW_MANIFEST_NAME)
+    workflow_manifest = _read_manifest(dest_claude_dir / WORKFLOW_MANIFEST_NAME)
     expected_workflow = copy_template_tree(
         template_root / ".claude",
         dest_claude_dir,
         preset,
         force=force,
         workflow_only=workflow_only,
+        skills_only=False,
         workflow_root=".claude",
         previously_managed=workflow_manifest,
+        overwrite_unmanaged=overwrite_unmanaged,
     )
     seed_standard_context(dest_claude_dir, force=force, workflow_only=workflow_only)
-    expected_scripts = copy_named_runner_files(source_scripts_dir, repo_root, ("run-verify.py",), force=force)
+    expected_scripts = copy_named_runner_files(
+        source_scripts_dir,
+        repo_root,
+        ("run-verify.py",),
+        force=force,
+        overwrite_unmanaged=overwrite_unmanaged,
+    )
     if write_verify_config(
         repo_root,
         preset,
         force=force,
         log_dir=".claude/logs/verify",
         launcher=launcher,
-        previously_managed=read_workflow_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
+        previously_managed=_read_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
+        overwrite_unmanaged=overwrite_unmanaged,
     ):
         expected_scripts.add("verify-config.json")
     prune_retired_runner_files(
@@ -1080,6 +1517,9 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
         RETIRED_STANDARD_RUNNERS + CODEX_ONLY_RUNNERS,
         force=force,
         expected=expected_scripts,
+        overwrite_unmanaged=overwrite_unmanaged,
+        preset_name=preset_name,
+        template_name=template_name,
     )
     is_research = template_name == "research-survey"
     syntax_enabled = bool(preset.get("SYNTAX_CHECK_ENABLED", False)) and bool(str(preset.get("SYNTAX_CHECK_CMD", "")).strip())
@@ -1092,6 +1532,7 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
         syntax_enabled=syntax_enabled,
         python_launcher=launcher,
         previously_managed=workflow_manifest,
+        overwrite_unmanaged=overwrite_unmanaged,
         )
     )
     expected_workflow.update(
@@ -1102,6 +1543,7 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
             is_research=is_research,
             workflow_only=workflow_only,
             previously_managed=workflow_manifest,
+            overwrite_unmanaged=overwrite_unmanaged,
         )
     )
     prune_workflow_tree(
@@ -1109,41 +1551,155 @@ def initialize_standard_template(template_name: str, preset_name: str, *, force:
         expected=expected_workflow,
         force=force,
         workflow_only=workflow_only,
+        skills_only=False,
         workflow_root=".claude",
+        preset_name=preset_name,
+        template_name=template_name,
+        overwrite_unmanaged=overwrite_unmanaged,
     )
     update_gitignore(repo_root, preset, workflow_root=".claude")
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    if args.codex_main and args.template:
-        print("ERROR: use either --codex-main or --template/-t, not both", file=sys.stderr)
+
+    repo_root = Path.cwd()
+    # --fresh is the recovery path for broken installs — never let a malformed
+    # manifest block it.  For other modes the manifest is authoritative and
+    # parse errors surface to the user.  When --fresh succeeds in parsing the
+    # manifest we keep the tags so bare `--fresh` can still recover the same
+    # template/preset and so the cross-template guard stays active.
+    try:
+        active_template, manifest_preset, legacy_uninferable = detect_active_template(repo_root)
+    except RuntimeError as exc:
+        if args.fresh:
+            active_template, manifest_preset, legacy_uninferable = None, None, False
+        else:
+            print(
+                f"ERROR: {exc}\n"
+                "If the manifest is corrupted, re-run with --fresh to reinitialize "
+                "from scratch.",
+                file=sys.stderr,
+            )
+            return 1
+
+    explicit_template = args.template
+
+    # Legacy manifest that we cannot classify requires an explicit -t to disambiguate
+    # (migrates the manifest on this run).
+    if legacy_uninferable and explicit_template is None:
+        print(
+            "ERROR: legacy manifest detected but template cannot be inferred. "
+            "Please run with '-t <template> <preset>' once to migrate the manifest.",
+            file=sys.stderr,
+        )
         return 1
-    if not args.preset:
+
+    # Determine mode
+    if args.fresh:
+        mode = "fresh"
+    elif args.update:
+        if active_template is None:
+            print(
+                "ERROR: --update requires an existing scaffold (no manifest found).",
+                file=sys.stderr,
+            )
+            return 1
+        mode = "update"
+    elif active_template is not None:
+        mode = "update"  # smart routing
+    else:
+        mode = "init"
+
+    # Resolve template (preference: explicit -t > manifest > preset inference > default)
+    if explicit_template is not None:
+        template = explicit_template
+    elif active_template is not None:
+        template = active_template
+    elif args.preset and args.preset.startswith("survey-"):
+        template = "research-survey"
+    else:
+        template = "project-init"
+
+    # Cross-template switch is not supported; require manual rm -rf for switching
+    if active_template is not None and active_template != template:
+        print(
+            "ERROR: cross-template switch is not supported.\n"
+            f"  Active template: {active_template}\n"
+            f"  Requested template: {template}\n"
+            "To switch, back up context files you want to keep and then run:\n"
+            "  rm -rf .claude .agents\n"
+            f"  /init-project -t {template} <preset>",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Resolve preset
+    preset_name: str | None = args.preset or manifest_preset
+    if not preset_name:
         print("ERROR: preset is required", file=sys.stderr)
         return 1
 
+    # Preset mismatch detection (update mode only; fresh implies overwrite intent)
+    if (
+        mode == "update"
+        and args.preset is not None
+        and manifest_preset is not None
+        and args.preset != manifest_preset
+        and not args.accept_preset_change
+    ):
+        print(
+            f"WARNING: preset mismatch. Manifest records '{manifest_preset}', "
+            f"but '{args.preset}' was requested.\n"
+            "Re-run with --accept-preset-change to confirm the change "
+            "(or --fresh to reinitialize).",
+            file=sys.stderr,
+        )
+        return 3  # dedicated exit code for preset mismatch (avoid argparse error code 2)
+
+    # Map mode to initialize_* parameters.
+    # - init (no flag, no manifest): force=False → skip existing.
+    # - update (smart or --update): force=True + workflow_only=True → refresh managed,
+    #   preserve context/. overwrite_unmanaged=False → keep user-owned files at template paths.
+    # - fresh (--fresh): force=True + workflow_only=False → overwrite all, including
+    #   non-managed files at template paths (nuclear re-init).
+    if mode == "fresh":
+        force = True
+        workflow_only = False
+        overwrite_unmanaged = True
+    elif mode == "update":
+        force = True
+        workflow_only = True
+        overwrite_unmanaged = False
+    else:  # init
+        force = False
+        workflow_only = False
+        overwrite_unmanaged = False
+
     try:
-        if args.codex_main:
+        if template == "codex-main":
             initialize_codex_main(
-                args.preset,
-                force=args.force,
-                workflow_only=args.workflow_only,
+                preset_name,
+                force=force,
+                workflow_only=workflow_only,
+                skills_only=False,
+                overwrite_unmanaged=overwrite_unmanaged,
             )
-            print(f"Initialized codex-main preset: {args.preset}")
+            print(f"Initialized codex-main preset: {preset_name}")
             print("Created/updated: .agents/, .claude/settings.json, .claude/settings.local.json(.bak), scripts/*.py, .gitignore")
-        elif args.template:
-            initialize_standard_template(
-                args.template,
-                args.preset,
-                force=args.force,
-                workflow_only=args.workflow_only,
-            )
-            print(f"Initialized template {args.template}: {args.preset}")
-            print("Created/updated: .claude/, scripts/run-verify.py, scripts/verify-config.json, .gitignore")
         else:
-            print("ERROR: specify --codex-main or --template/-t", file=sys.stderr)
-            return 1
+            initialize_standard_template(
+                template,
+                preset_name,
+                force=force,
+                workflow_only=workflow_only,
+                overwrite_unmanaged=overwrite_unmanaged,
+            )
+            print(f"Initialized template {template}: {preset_name}")
+            print("Created/updated: .claude/, scripts/run-verify.py, scripts/verify-config.json, .gitignore")
+    except InitCollisionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

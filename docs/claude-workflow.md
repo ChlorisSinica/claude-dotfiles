@@ -22,30 +22,39 @@ python scripts/setup.py -f
 
 ## 主な入口
 
+`/init-project` は **smart mode** の単一入口です．旧 `/update-workflow` / `/update-skills` は Bundle 2 で統合・削除されました．
+
 新規プロジェクト:
 
 ```text
 /init-project python-pytorch
 ```
 
-既存プロジェクトの workflow 更新:
+既存プロジェクトの workflow 更新（smart mode で自動遷移）:
 
 ```text
-/update-workflow python-pytorch
+/init-project python-pytorch     # preset 確認付き update
+/init-project                     # preset を manifest から復元
+/init-project --update python-pytorch  # update 強制（manifest 無ならエラー）
 ```
 
-## `/init-project`
+## `/init-project` 概要
 
 - 既定テンプレートは `project-init`
-- `survey-cv`, `survey-ms` は `research-survey` テンプレートを使用
-- `--codex-main` を付けると Codex-first テンプレートを Claude Code から互換的に呼べる
+- `survey-cv`, `survey-ms` は preset 名から `research-survey` を自動推論
+- `-t codex-main` で Codex-first テンプレートを Claude Code から呼べる
+- smart mode: manifest 有なら update，無なら init
+- `--fresh` で全上書き re-init（nuclear option）
+- preset mismatch 検出時は exit code 3 → `--accept-preset-change` で承認
 
 例:
 
 ```text
-/init-project python
-/init-project survey-cv
-/init-project --codex-main python
+/init-project python                        # 新規 or 既存 refresh
+/init-project survey-cv                     # research-survey preset
+/init-project -t codex-main python          # Codex-first 新規
+/init-project python --fresh                # 強制 re-init
+/init-project python-pytorch --accept-preset-change  # preset 差し替え承認
 ```
 
 生成直後の注意:
@@ -53,17 +62,13 @@ python scripts/setup.py -f
 - 新しく展開された `.claude/commands/` や `.agents/skills/` は，起動中の Claude Code / Codex セッションには即時反映されないことがある
 - 使えない場合は一度セッションを開き直すか，アプリを再起動する
 
-## `/update-workflow`
+## workflow update
+
+`/init-project` が smart mode で自動的に update mode に遷移します．従来の `/update-workflow` の挙動と等価:
 
 - `.claude/context/` と runtime state を保持しつつ，template-managed files を更新
-- `--codex-main` では `.agents/context/` と `.agents/reviews/` を保持しつつ Codex-first asset を更新
-
-例:
-
-```text
-/update-workflow python
-/update-workflow --codex-main python
-```
+- `-t codex-main` では `.agents/context/` と `.agents/reviews/` を保持しつつ Codex-first asset を更新
+- 既存 scaffold（manifest 有）で `/init-project` 単独打ちすれば preset も manifest から復元
 
 ## 開発ワークフロー
 

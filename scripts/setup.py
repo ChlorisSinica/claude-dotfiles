@@ -19,9 +19,7 @@ IGNORE_NAMES = {"__pycache__", "_legacy"}
 MANIFEST_NAME = ".claude-dotfiles-managed.json"
 SOURCE_METADATA_NAME = ".claude-dotfiles-source.json"
 PRE_MANIFEST_RETIREMENTS: dict[str, set[Path]] = {
-    "commands": {
-        Path("update-skills.md"),
-    },
+    "commands": set(),
     "templates": set(),
     "scripts": {
         Path("init-project.ps1"),
@@ -319,8 +317,11 @@ def install_dotfiles(
     print("=== Done ===")
     print()
     print("Available commands:")
-    print("  /init-project    Set up a new project with Claude Code × Codex workflow")
-    print("  /update-workflow Refresh workflow commands/agents for an existing project")
+    print("  /init-project    Scaffold or refresh a Claude Code × Codex project (smart mode)")
+    print("                    - no args: refresh existing scaffold using manifest preset")
+    print("                    - <preset>: init or update with the given preset")
+    print("                    - --fresh: force full re-init (overwrites all files)")
+    print("                    - --update: force workflow refresh (requires existing manifest)")
     print()
     print("Options:")
     print("  -f               Overwrite managed files")
@@ -335,13 +336,19 @@ def main(argv: list[str] | None = None) -> int:
     codex_dir = Path(args.codex_dir).expanduser().resolve() if args.codex_dir else home / ".codex"
     repo_root = resolve_repo_root(args.source_root, claude_dir=claude_dir)
 
+    # Auto-include Codex sync when an existing dotfiles-owned Codex install is detected.
+    # We key on the dotfiles manifest marker, not the mere presence of ~/.codex/skills/,
+    # so unrelated third-party Codex skills do not trigger spurious syncs.
+    codex_skills_manifest = codex_dir / "skills" / MANIFEST_NAME
+    include_codex = args.codex or codex_skills_manifest.is_file()
+
     try:
         install_dotfiles(
             repo_root=repo_root,
             claude_dir=claude_dir,
             codex_dir=codex_dir,
             force=args.force,
-            include_codex=args.codex,
+            include_codex=include_codex,
             include_statusline=args.statusline,
         )
     except Exception as exc:
