@@ -34,3 +34,19 @@
 - APPROVED: implementation behavior and task/plan intent materially align
 - CONDITIONAL: core intent aligns, but some non-blocking drift or documentation/task update remains
 - REVISE: required behavior is missing, replaced, contradicted, or materially drifted
+
+## Affirmative Alignment Note
+
+When the implementation materially aligns with plan/tasks, surface that
+positive signal as a **single sentence placed immediately before the
+`VERDICT:` line** — do not create a dedicated finding bullet for praise.
+Keep it one sentence, citing which acceptance criterion is satisfied. Example:
+
+```
+Implementation satisfies T1 acceptance criteria (--foo registered, prints
+"1.0.0", exits 0); no alignment drift detected.
+
+VERDICT: APPROVED
+```
+
+Omit this note entirely when findings exist that contradict alignment.
