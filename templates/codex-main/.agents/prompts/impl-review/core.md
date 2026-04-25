@@ -115,6 +115,43 @@ VERDICT: REVISE
 - CONDITIONAL: no unresolved P0 remains, but the current slice still has important P1 findings or explicit verification/alignment gaps
 - REVISE: at least one unresolved current-slice P0 remains, or the implementation clearly does not satisfy the declared acceptance path
 
+### Fix-expansion convergence
+
+Independent of (and checked **before**) the 3-cycle hard cap below.
+
+#### Trigger conditions (all three required)
+
+1. The current cycle's diff (the diff under review now) added **≥50 LoC**.
+2. The current cycle's P0/P1 findings, by `file:line` references, are
+   **majority (>50%) on lines newly added in the current cycle's diff**.
+   Findings that primarily target pre-existing code (modify / delete of
+   existing lines does not count as newly added) do not satisfy condition 2.
+3. The previous cycle (cycle N-1) showed the same pattern: P0/P1 referencing
+   lines that were newly added in cycle N-1's diff. **If there is no cycle
+   N-1 (this is the first review of the slice), condition 3 is automatically
+   unmet** and the guard does not fire.
+
+LoC trend (growing vs shrinking) is not a factor — the threshold and reference
+target alone decide the trigger.
+
+#### Required emission when triggered
+
+Pick one based on the findings:
+
+- If at least one **P0** remains → emit normally per the Verdict Rules below
+  (i.e. `REVISE`). The fix-expansion guard does not override P0 priority.
+- If only **P1** findings remain AND the declared acceptance path is satisfied
+  → emit **APPROVED** with the new P1 demoted to **Residual Risks**. Edge
+  polish on freshly-added code is residual, not blocking.
+- If only P1 findings remain but the acceptance path satisfaction is unclear,
+  OR the expanding diff suggests the slice itself is too complex →
+  emit **REVISE** whose first finding starts with `rescope-required:` so the
+  implementer hands the situation to the user.
+
+Do NOT silently emit `CONDITIONAL` with new P0/P1 in this regime. The
+implementer skill keeps iterating on `CONDITIONAL`, so unbounded P0/P1
+generation while the diff keeps growing causes a non-terminating loop.
+
 ### Convergence Hard Cap
 
 - If a previous-cycle review is injected and this review has already run
