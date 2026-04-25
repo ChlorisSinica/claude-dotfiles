@@ -56,12 +56,12 @@ class InitProjectTests(unittest.TestCase):
         self.assertTrue((self.repo_root / ".agents" / "AGENTS.md").is_file())
         self.assertTrue((self.repo_root / ".agents" / "context" / "plan.md").is_file())
         self.assertTrue((self.repo_root / ".agents" / "context" / "tasks.md").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "run-codex-plan-review.py").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "run-codex-impl-review.py").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "run-codex-impl-cycle.py").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "fix_codex_plugin_prompts.py").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "run-verify.py").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "verify-config.json").is_file())
+        self.assertTrue((self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py").is_file())
+        self.assertTrue((self.repo_root / ".agents" / "scripts" / "run-codex-impl-review.py").is_file())
+        self.assertTrue((self.repo_root / ".agents" / "scripts" / "run-codex-impl-cycle.py").is_file())
+        self.assertTrue((self.repo_root / ".agents" / "scripts" / "fix_codex_plugin_prompts.py").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "run-verify.py").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "verify-config.json").is_file())
         self.assertTrue((self.repo_root / ".claude" / "settings.json").is_file())
         self.assertTrue((self.repo_root / ".claude" / "settings.local.json").is_file())
         self.assertTrue((self.repo_root / ".claude" / "settings.local.json.bak").is_file())
@@ -77,9 +77,9 @@ class InitProjectTests(unittest.TestCase):
                 (prompt_root / "preset.md").read_text(encoding="utf-8").strip(),
             ]
         ).rstrip() + "\n"
-        self.assertIn("python3 scripts/run-codex-plan-review.py --phase arch", plan_review_skill)
-        self.assertIn("python3 scripts/run-codex-impl-cycle.py", fkin_skill)
-        self.assertIn("python3 scripts/run-verify.py", agents_md)
+        self.assertIn("python3 .agents/scripts/run-codex-plan-review.py --phase arch", plan_review_skill)
+        self.assertIn("python3 .agents/scripts/run-codex-impl-cycle.py", fkin_skill)
+        self.assertIn("python3 .claude/scripts/run-verify.py", agents_md)
         self.assertIn("検証コマンド: `python3 -m pytest --tb=short -q`", agents_md)
         self.assertEqual(legacy_prompt, expected_legacy_prompt)
         gitignore = (self.repo_root / ".gitignore").read_text(encoding="utf-8")
@@ -89,7 +89,7 @@ class InitProjectTests(unittest.TestCase):
         self.assertIn(".agents/context/_codex_input.tmp", gitignore)
         self.assertNotIn(".agents/\n", gitignore)
 
-        verify_config = json.loads((self.repo_root / "scripts" / "verify-config.json").read_text(encoding="utf-8"))
+        verify_config = json.loads((self.repo_root / ".claude" / "scripts" / "verify-config.json").read_text(encoding="utf-8"))
         expected_shell = "direct" if os.name == "nt" else "bash"
         self.assertEqual(verify_config["VERIFY_SHELL"], expected_shell)
         self.assertIn("pytest", verify_config["VERIFY_CMD"])
@@ -136,11 +136,14 @@ class InitProjectTests(unittest.TestCase):
         claude_manifest = json.loads(
             (self.repo_root / ".claude" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8")
         )
-        scripts_manifest = json.loads(
-            (self.repo_root / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8")
+        agents_scripts_manifest = json.loads(
+            (self.repo_root / ".agents" / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8")
+        )
+        claude_scripts_manifest = json.loads(
+            (self.repo_root / ".claude" / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8")
         )
 
-        for manifest in (agents_manifest, claude_manifest, scripts_manifest):
+        for manifest in (agents_manifest, claude_manifest, agents_scripts_manifest, claude_scripts_manifest):
             self.assertEqual(manifest["preset"], "python")
             self.assertEqual(manifest["template"], "codex-main")
 
@@ -153,7 +156,7 @@ class InitProjectTests(unittest.TestCase):
                 exit_code = self.runner.main(["-t", "codex-main", "python-pytorch"])
 
         self.assertEqual(exit_code, 0)
-        verify_config = json.loads((self.repo_root / "scripts" / "verify-config.json").read_text(encoding="utf-8"))
+        verify_config = json.loads((self.repo_root / ".claude" / "scripts" / "verify-config.json").read_text(encoding="utf-8"))
         self.assertEqual(verify_config["VERIFY_SHELL"], "powershell")
         self.assertIn("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", verify_config["VERIFY_CMD"])
         self.assertTrue(verify_config["VERIFY_CMD"].startswith("python3 "))
@@ -262,20 +265,20 @@ class InitProjectTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertTrue((self.repo_root / ".claude" / "commands" / "plan.md").is_file())
         self.assertTrue((self.repo_root / ".claude" / "agents" / "master_workflow.md").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "run-verify.py").is_file())
-        self.assertTrue((self.repo_root / "scripts" / "verify-config.json").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "run-verify.py").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "verify-config.json").is_file())
         self.assertTrue((self.repo_root / ".claude" / "settings.json").is_file())
         self.assertTrue((self.repo_root / ".claude" / "settings.local.json.bak").is_file())
         self.assertTrue((self.repo_root / ".claude" / "hooks" / "syntax-check.py").is_file())
         self.assertTrue((self.repo_root / ".claude" / "CLAUDE.md").is_file())
-        self.assertFalse((self.repo_root / "scripts" / "run-codex-plan-review.py").exists())
+        self.assertFalse((self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py").exists())
         implement_md = (self.repo_root / ".claude" / "commands" / "implement.md").read_text(encoding="utf-8")
         master_workflow = (self.repo_root / ".claude" / "agents" / "master_workflow.md").read_text(encoding="utf-8")
         settings = json.loads((self.repo_root / ".claude" / "settings.json").read_text(encoding="utf-8"))
         local_settings = json.loads((self.repo_root / ".claude" / "settings.local.json").read_text(encoding="utf-8"))
         syntax_hook = (self.repo_root / ".claude" / "hooks" / "syntax-check.py").read_text(encoding="utf-8")
-        verify_config = json.loads((self.repo_root / "scripts" / "verify-config.json").read_text(encoding="utf-8"))
-        self.assertIn("python3 scripts/run-verify.py", implement_md)
+        verify_config = json.loads((self.repo_root / ".claude" / "scripts" / "verify-config.json").read_text(encoding="utf-8"))
+        self.assertIn("python3 .claude/scripts/run-verify.py", implement_md)
         self.assertIn("python3 -m pytest --tb=short -q", master_workflow)
         self.assertEqual(
             settings["hooks"]["PostToolUse"][0]["hooks"][0]["command"],
@@ -371,7 +374,7 @@ class InitProjectTests(unittest.TestCase):
         merged = json.loads(active.read_text(encoding="utf-8"))
         allow = merged["permissions"]["allow"]
         self.assertIn("Bash(custom-local:*)", allow)
-        self.assertIn("Bash(python scripts/run-verify.py:*)", allow)
+        self.assertIn("Bash(python .claude/scripts/run-verify.py:*)", allow)
         self.assertIn("Bash(git status:*)", allow)
 
     def test_codex_main_fresh_overwrites_unmanaged_claude_settings_files(self) -> None:
@@ -457,33 +460,39 @@ class InitProjectTests(unittest.TestCase):
                 scaffold_exit = self.runner.main(["-t", "codex-main", "python"])
         self.assertEqual(scaffold_exit, 0)
 
-        scripts_dir = self.repo_root / "scripts"
-        retired = [
-            scripts_dir / "run-codex-plan-review.ps1",
-            scripts_dir / "run-codex-impl-review.ps1",
-            scripts_dir / "run-verify.sh",
-            scripts_dir / "run-verify.ps1",
+        agents_scripts = self.repo_root / ".agents" / "scripts"
+        claude_scripts = self.repo_root / ".claude" / "scripts"
+        retired_agents = [
+            agents_scripts / "run-codex-plan-review.ps1",
+            agents_scripts / "run-codex-impl-review.ps1",
         ]
-        for path in retired:
+        retired_claude = [
+            claude_scripts / "run-verify.sh",
+            claude_scripts / "run-verify.ps1",
+        ]
+        for path in retired_agents + retired_claude:
             path.write_text("legacy\n", encoding="utf-8")
-        # Seed legacy entries into the scripts manifest so pruning can find them.
-        scripts_manifest_path = self.repo_root / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME
-        existing = json.loads(scripts_manifest_path.read_text(encoding="utf-8"))
-        existing["managed"] = sorted(set(existing.get("managed", [])) | {path.name for path in retired})
-        scripts_manifest_path.write_text(
-            json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        # Seed retired entries into each scripts manifest so pruning can find them.
+        for scripts_dir, retired in ((agents_scripts, retired_agents), (claude_scripts, retired_claude)):
+            manifest_path = scripts_dir / self.runner.WORKFLOW_MANIFEST_NAME
+            existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+            existing["managed"] = sorted(set(existing.get("managed", [])) | {path.name for path in retired})
+            manifest_path.write_text(
+                json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
 
         with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
             with chdir(self.repo_root):
                 exit_code = self.runner.main(["-t", "codex-main", "python", "--update"])
 
         self.assertEqual(exit_code, 0)
-        for path in retired:
+        for path in retired_agents + retired_claude:
             self.assertFalse(path.exists(), str(path))
 
     def test_codex_main_force_prunes_retired_shell_runners_without_workflow_only(self) -> None:
+        # Pre-seed retired files at the legacy scripts/ path with a legacy manifest.
+        # The migration step in initialize_codex_main must clear them out wholesale.
         scripts_dir = self.repo_root / "scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         retired = [
@@ -514,6 +523,8 @@ class InitProjectTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         for path in retired:
             self.assertFalse(path.exists(), str(path))
+        # Legacy manifest is removed by migration.
+        self.assertFalse(manifest.exists())
 
     def test_codex_main_force_prunes_removed_workflow_assets_tracked_by_manifest(self) -> None:
         stale_skill = self.repo_root / ".agents" / "skills" / "removed-skill" / "SKILL.md"
@@ -595,6 +606,8 @@ class InitProjectTests(unittest.TestCase):
         self.assertIn("AGENTS.md", manifest["managed"])
 
     def test_codex_main_force_preserves_untracked_custom_runner_names_without_manifest(self) -> None:
+        # User-owned file at the legacy scripts/ path with NO legacy manifest must
+        # not be touched: migration only acts when a manifest declares ownership.
         custom_runner = self.repo_root / "scripts" / "run-verify.sh"
         custom_runner.parent.mkdir(parents=True, exist_ok=True)
         custom_runner.write_text("custom\n", encoding="utf-8")
@@ -605,10 +618,11 @@ class InitProjectTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertTrue(custom_runner.exists())
+        self.assertEqual(custom_runner.read_text(encoding="utf-8"), "custom\n")
 
     def test_codex_main_fresh_overwrites_unmanaged_colliding_runner_file(self) -> None:
         # --fresh is the nuclear option: even a user-owned runner at a template path gets overwritten.
-        custom_runner = self.repo_root / "scripts" / "run-codex-plan-review.py"
+        custom_runner = self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py"
         custom_runner.parent.mkdir(parents=True, exist_ok=True)
         custom_runner.write_text("custom runner\n", encoding="utf-8")
 
@@ -618,49 +632,47 @@ class InitProjectTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertNotEqual(custom_runner.read_text(encoding="utf-8"), "custom runner\n")
-        manifest = json.loads((self.repo_root / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (self.repo_root / ".agents" / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8")
+        )
         self.assertIn("run-codex-plan-review.py", manifest["managed"])
 
     def test_codex_main_non_force_keeps_retired_runner_manifest_until_force(self) -> None:
-        scripts_dir = self.repo_root / "scripts"
-        scripts_dir.mkdir(parents=True, exist_ok=True)
-        retired = [
-            scripts_dir / "run-codex-plan-review.ps1",
-            scripts_dir / "run-codex-impl-review.ps1",
-            scripts_dir / "run-verify.sh",
-            scripts_dir / "run-verify.ps1",
+        # Seed retired files at the new locations with their respective manifests.
+        agents_scripts = self.repo_root / ".agents" / "scripts"
+        claude_scripts = self.repo_root / ".claude" / "scripts"
+        agents_scripts.mkdir(parents=True, exist_ok=True)
+        claude_scripts.mkdir(parents=True, exist_ok=True)
+        retired_agents = [
+            agents_scripts / "run-codex-plan-review.ps1",
+            agents_scripts / "run-codex-impl-review.ps1",
         ]
-        for path in retired:
+        retired_claude = [
+            claude_scripts / "run-verify.sh",
+            claude_scripts / "run-verify.ps1",
+        ]
+        for path in retired_agents + retired_claude:
             path.write_text("legacy\n", encoding="utf-8")
-        manifest = scripts_dir / self.runner.WORKFLOW_MANIFEST_NAME
-        manifest.write_text(
-            json.dumps(
-                {
-                    "managed": [path.name for path in retired],
-                },
-                ensure_ascii=False,
-                indent=2,
+        for scripts_dir, retired in ((agents_scripts, retired_agents), (claude_scripts, retired_claude)):
+            (scripts_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+                json.dumps({"managed": [path.name for path in retired]}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
             )
-            + "\n",
-            encoding="utf-8",
-        )
 
         with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
             with chdir(self.repo_root):
                 non_force_exit = self.runner.main(["-t", "codex-main", "python"])
 
         self.assertEqual(non_force_exit, 0)
-        non_force_manifest = json.loads(manifest.read_text(encoding="utf-8"))
-        for path in retired:
+        for path in retired_agents + retired_claude:
             self.assertTrue(path.exists(), str(path))
-            self.assertIn(path.name, non_force_manifest["managed"])
 
         with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
             with chdir(self.repo_root):
                 force_exit = self.runner.main(["-t", "codex-main", "python", "--fresh"])
 
         self.assertEqual(force_exit, 0)
-        for path in retired:
+        for path in retired_agents + retired_claude:
             self.assertFalse(path.exists(), str(path))
 
     def test_codex_main_fresh_recovers_from_malformed_active_settings_local(self) -> None:
@@ -715,16 +727,21 @@ class InitProjectTests(unittest.TestCase):
         self.assertNotEqual(settings_active.read_text(encoding="utf-8"), '{"permissions":{"allow":["Bash(custom-active:*)"]}}\n')
 
     def test_project_init_force_drops_stale_codex_runner_manifest_entries(self) -> None:
-        scripts_dir = self.repo_root / "scripts"
-        scripts_dir.mkdir(parents=True, exist_ok=True)
+        # Seed stale codex runners at the new agents/scripts/ location with their manifest.
+        # project-init template has no concept of agents-side runners, so they must be
+        # pruned out entirely.
+        agents_scripts = self.repo_root / ".agents" / "scripts"
+        claude_scripts = self.repo_root / ".claude" / "scripts"
+        agents_scripts.mkdir(parents=True, exist_ok=True)
+        claude_scripts.mkdir(parents=True, exist_ok=True)
         stale = [
-            scripts_dir / "run-codex-plan-review.py",
-            scripts_dir / "run-codex-impl-review.py",
-            scripts_dir / "run-codex-impl-cycle.py",
+            claude_scripts / "run-codex-plan-review.py",
+            claude_scripts / "run-codex-impl-review.py",
+            claude_scripts / "run-codex-impl-cycle.py",
         ]
         for path in stale:
             path.write_text("legacy\n", encoding="utf-8")
-        manifest = scripts_dir / self.runner.WORKFLOW_MANIFEST_NAME
+        manifest = claude_scripts / self.runner.WORKFLOW_MANIFEST_NAME
         manifest.write_text(
             json.dumps({"managed": [path.name for path in stale]}, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -906,6 +923,607 @@ class InitProjectTests(unittest.TestCase):
             with chdir(self.repo_root):
                 exit_code = self.runner.main([])
         self.assertEqual(exit_code, 0)
+
+    def test_legacy_scripts_layout_migrates_to_split_layout(self) -> None:
+        # Pre-(C) layout: every runner lived under scripts/ with a single manifest.
+        # An update on such a repo must remove the legacy files + manifest and
+        # populate .agents/scripts/ and .claude/scripts/ with fresh copies.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        legacy_files = [
+            "run-codex-plan-review.py",
+            "run-codex-impl-review.py",
+            "run-codex-impl-cycle.py",
+            "fix_codex_plugin_prompts.py",
+            "run-verify.py",
+            "verify-config.json",
+        ]
+        for name in legacy_files:
+            (legacy_scripts / name).write_text("legacy\n", encoding="utf-8")
+        # Also drop a user-owned file that the manifest does NOT list — must survive.
+        user_file = legacy_scripts / "user-owned.txt"
+        user_file.write_text("user\n", encoding="utf-8")
+        legacy_manifest = legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME
+        legacy_manifest.write_text(
+            json.dumps(
+                {
+                    "managed": legacy_files,
+                    "preset": "python",
+                    "template": "codex-main",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Seed the .agents/.claude-dotfiles-managed.json to make smart-mode pick codex-main.
+        agents_dir = self.repo_root / ".agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        (agents_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {
+                    "managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"],
+                    "preset": "python",
+                    "template": "codex-main",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main([])
+
+        self.assertEqual(exit_code, 0)
+        # All legacy managed files removed, manifest gone, but user file preserved.
+        for name in legacy_files:
+            self.assertFalse((legacy_scripts / name).exists(), name)
+        self.assertFalse(legacy_manifest.exists())
+        self.assertTrue(user_file.exists())
+        self.assertEqual(user_file.read_text(encoding="utf-8"), "user\n")
+        # New layout populated.
+        self.assertTrue((self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "run-verify.py").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "verify-config.json").is_file())
+
+    def test_legacy_scripts_migration_preserves_verify_config_customizations(self) -> None:
+        # P1-3 regression guard: a pre-(C) verify-config.json with user overrides
+        # must survive a normal update (the value is carried forward to the new
+        # location and write_verify_config preserves it as user-owned).
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        custom_config = {
+            "VERIFY_CMD": "echo custom-verify",
+            "VERIFY_SHELL": "direct",
+            "PRIMARY_LOG_DIR": "custom/log/dir",
+        }
+        (legacy_scripts / "verify-config.json").write_text(
+            json.dumps(custom_config, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        for name in ("run-verify.py", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py"):
+            (legacy_scripts / name).write_text("legacy\n", encoding="utf-8")
+        (legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {
+                    "managed": [
+                        "verify-config.json",
+                        "run-verify.py",
+                        "run-codex-plan-review.py",
+                        "run-codex-impl-review.py",
+                        "run-codex-impl-cycle.py",
+                        "fix_codex_plugin_prompts.py",
+                    ],
+                    "preset": "python",
+                    "template": "codex-main",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Seed both .agents/ and .claude/ manifests so smart-mode picks codex-main.
+        agents_dir = self.repo_root / ".agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        (agents_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main([])
+        self.assertEqual(exit_code, 0)
+
+        new_config_path = self.repo_root / ".claude" / "scripts" / "verify-config.json"
+        self.assertTrue(new_config_path.is_file())
+        new_config = json.loads(new_config_path.read_text(encoding="utf-8"))
+        self.assertEqual(new_config, custom_config)
+        # Carried-forward file is tracked as managed in the new manifest, so
+        # future updates treat it consistently with any other managed file.
+        new_manifest = json.loads(
+            (self.repo_root / ".claude" / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME).read_text(encoding="utf-8")
+        )
+        self.assertIn("verify-config.json", new_manifest["managed"])
+
+    def test_legacy_scripts_migration_skipped_on_dotfiles_source_repo(self) -> None:
+        # P1-2 regression guard: when init-project runs on the dotfiles source
+        # repo itself, scripts/ contains the master runners that other repos
+        # bundle. Migration must skip so it never deletes those masters.
+        with mock.patch.object(self.runner, "repo_root_from_script", return_value=self.repo_root):
+            self.assertTrue(self.runner.is_dotfiles_source_repo(self.repo_root))
+            # Even with a legacy manifest sitting in scripts/, neither phase
+            # should touch the master files.
+            scripts_dir = self.repo_root / "scripts"
+            scripts_dir.mkdir(parents=True, exist_ok=True)
+            (scripts_dir / "run-verify.py").write_text("master\n", encoding="utf-8")
+            (scripts_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+                json.dumps({"managed": ["run-verify.py"]}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.runner.migrate_legacy_scripts_carry_forward(self.repo_root)
+            self.runner.migrate_legacy_scripts_cleanup(
+                self.repo_root,
+                new_scripts_present={"run-verify.py"},
+                template_runner_names={"run-verify.py"},
+            )
+        self.assertTrue((scripts_dir / "run-verify.py").is_file())
+        self.assertEqual((scripts_dir / "run-verify.py").read_text(encoding="utf-8"), "master\n")
+        self.assertTrue((scripts_dir / self.runner.WORKFLOW_MANIFEST_NAME).is_file())
+
+    def test_legacy_scripts_migration_atomic_on_collision(self) -> None:
+        # P1-1 regression guard: if a fresh-init mode (no manifest) runs on a
+        # repo that has both a legacy scripts/ layout AND an unmanaged file at
+        # one of the new destinations, init must abort BEFORE deleting the
+        # legacy state.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        (legacy_scripts / "run-verify.py").write_text("legacy verify\n", encoding="utf-8")
+        legacy_manifest = legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME
+        legacy_manifest.write_text(
+            json.dumps({"managed": ["run-verify.py"]}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        # Plant an unmanaged collision at the new destination so non-force init fails.
+        new_runner = self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py"
+        new_runner.parent.mkdir(parents=True, exist_ok=True)
+        new_runner.write_text("user owned\n", encoding="utf-8")
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["-t", "codex-main", "python"])
+        self.assertEqual(exit_code, 1)
+        # Legacy scripts/ files and manifest preserved — operation was atomic.
+        self.assertTrue((legacy_scripts / "run-verify.py").is_file())
+        self.assertTrue(legacy_manifest.is_file())
+        # User-owned collision file untouched.
+        self.assertEqual(new_runner.read_text(encoding="utf-8"), "user owned\n")
+
+    def test_legacy_scripts_cleanup_keeps_unmigrated_entries(self) -> None:
+        # Regression for the "cleanup deletes everything in the legacy manifest"
+        # bug: in update mode, copy_runner_files_to silently skips a
+        # destination that already contains an unmanaged user file. The legacy
+        # copy must NOT be deleted in that case, otherwise the user loses both
+        # the old managed file and any working content.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        for name in ("run-verify.py", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py"):
+            (legacy_scripts / name).write_text(f"legacy-{name}\n", encoding="utf-8")
+        legacy_manifest = legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME
+        legacy_manifest.write_text(
+            json.dumps(
+                {
+                    "managed": [
+                        "run-verify.py",
+                        "run-codex-plan-review.py",
+                        "run-codex-impl-review.py",
+                        "run-codex-impl-cycle.py",
+                        "fix_codex_plugin_prompts.py",
+                    ],
+                    "preset": "python",
+                    "template": "codex-main",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Plant unmanaged user files at the new claude/agents destinations for
+        # run-verify.py and run-codex-plan-review.py — copy must skip them in
+        # update mode (force=True, overwrite_unmanaged=False).
+        new_run_verify = self.repo_root / ".claude" / "scripts" / "run-verify.py"
+        new_run_verify.parent.mkdir(parents=True, exist_ok=True)
+        new_run_verify.write_text("user-owned-verify\n", encoding="utf-8")
+        new_codex_plan = self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py"
+        new_codex_plan.parent.mkdir(parents=True, exist_ok=True)
+        new_codex_plan.write_text("user-owned-plan\n", encoding="utf-8")
+        # Seed manifests so smart-mode picks codex-main update.
+        agents_dir = self.repo_root / ".agents"
+        (agents_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main([])
+        self.assertEqual(exit_code, 0)
+
+        # Skipped-copy legacy files preserved (along with the user's content at the new path).
+        self.assertTrue((legacy_scripts / "run-verify.py").is_file())
+        self.assertEqual(new_run_verify.read_text(encoding="utf-8"), "user-owned-verify\n")
+        self.assertTrue((legacy_scripts / "run-codex-plan-review.py").is_file())
+        self.assertEqual(new_codex_plan.read_text(encoding="utf-8"), "user-owned-plan\n")
+        # Successfully migrated legacy files removed.
+        self.assertFalse((legacy_scripts / "run-codex-impl-review.py").exists())
+        self.assertFalse((legacy_scripts / "run-codex-impl-cycle.py").exists())
+        self.assertFalse((legacy_scripts / "fix_codex_plugin_prompts.py").exists())
+        # Legacy manifest re-written to track only the surviving entries.
+        self.assertTrue(legacy_manifest.is_file())
+        surviving = json.loads(legacy_manifest.read_text(encoding="utf-8"))
+        self.assertEqual(set(surviving["managed"]), {"run-verify.py", "run-codex-plan-review.py"})
+
+    def test_codex_main_init_aborts_atomically_on_claude_only_collision(self) -> None:
+        # Regression for the multi-destination preflight: a collision that
+        # exists only under .claude/scripts must abort BEFORE any .agents/scripts
+        # files are written. Pre-(C) `copy_runner_files` checked all runner
+        # collisions in one pass, so init never left a half-installed scaffold.
+        new_run_verify = self.repo_root / ".claude" / "scripts" / "run-verify.py"
+        new_run_verify.parent.mkdir(parents=True, exist_ok=True)
+        new_run_verify.write_text("user-owned-verify\n", encoding="utf-8")
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["-t", "codex-main", "python"])
+        self.assertEqual(exit_code, 1)
+        # No agents-side files written — the preflight aborted before the first copy.
+        self.assertFalse((self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py").exists())
+        self.assertFalse((self.repo_root / ".agents" / "scripts").exists())
+        # User collision file untouched.
+        self.assertEqual(new_run_verify.read_text(encoding="utf-8"), "user-owned-verify\n")
+
+    def test_codex_main_init_aborts_when_destination_path_is_a_file(self) -> None:
+        # Regression: if .claude/scripts (or .agents/scripts) exists as a FILE
+        # rather than a directory, a later mkdir(...exist_ok=True) would raise
+        # FileExistsError mid-flow. Preflight must catch it before any copy.
+        agents_scripts_path = self.repo_root / ".agents" / "scripts"
+        agents_scripts_path.parent.mkdir(parents=True, exist_ok=True)
+        agents_scripts_path.write_text("blocking file\n", encoding="utf-8")
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["-t", "codex-main", "python"])
+        self.assertEqual(exit_code, 1)
+        # The blocking file is untouched, no scaffold created.
+        self.assertTrue(agents_scripts_path.is_file())
+        self.assertEqual(agents_scripts_path.read_text(encoding="utf-8"), "blocking file\n")
+
+    def test_legacy_scripts_carry_forward_recovers_partial_migration(self) -> None:
+        # Regression: a previous failed migration may have left both a legacy
+        # scripts/verify-config.json (with user customizations) AND a generic
+        # .claude/scripts/verify-config.json (preset defaults). Carry-forward
+        # must prefer the legacy content over the generic new file.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        custom_config = {
+            "VERIFY_CMD": "echo legacy-customized",
+            "VERIFY_SHELL": "direct",
+            "PRIMARY_LOG_DIR": "custom/legacy",
+        }
+        (legacy_scripts / "verify-config.json").write_text(
+            json.dumps(custom_config, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        for name in ("run-verify.py", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py"):
+            (legacy_scripts / name).write_text("legacy\n", encoding="utf-8")
+        (legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {
+                    "managed": [
+                        "verify-config.json",
+                        "run-verify.py",
+                        "run-codex-plan-review.py",
+                        "run-codex-impl-review.py",
+                        "run-codex-impl-cycle.py",
+                        "fix_codex_plugin_prompts.py",
+                    ],
+                    "preset": "python",
+                    "template": "codex-main",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Plant a generic new-location file (simulates partial migration result).
+        new_verify = self.repo_root / ".claude" / "scripts" / "verify-config.json"
+        new_verify.parent.mkdir(parents=True, exist_ok=True)
+        new_verify.write_text(
+            json.dumps(
+                {"VERIFY_CMD": "python -m pytest", "VERIFY_SHELL": "direct", "PRIMARY_LOG_DIR": ".agents/logs/verify"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Mark the new file as init-managed so carry-forward recognizes it as a
+        # prior partial-migration artifact rather than a user-owned file.
+        (new_verify.parent / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["verify-config.json"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Seed manifests so smart-mode picks codex-main update.
+        agents_dir = self.repo_root / ".agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        (agents_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main([])
+        self.assertEqual(exit_code, 0)
+
+        # Carry-forward overwrote the generic new file with the legacy content.
+        self.assertEqual(json.loads(new_verify.read_text(encoding="utf-8")), custom_config)
+        # Legacy verify-config removed (cleanup ran because migration succeeded).
+        self.assertFalse((legacy_scripts / "verify-config.json").exists())
+
+    def test_legacy_scripts_carry_forward_preserves_user_owned_new_file(self) -> None:
+        # Regression: if the user manually created .claude/scripts/verify-config.json
+        # (not tracked in any new-location manifest), carry-forward must not
+        # overwrite it with legacy content. The legacy file is treated as a
+        # collision-skip — preserved in scripts/ so nothing is silently lost.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        legacy_config = {"VERIFY_CMD": "echo legacy", "VERIFY_SHELL": "direct", "PRIMARY_LOG_DIR": "legacy/log"}
+        (legacy_scripts / "verify-config.json").write_text(
+            json.dumps(legacy_config, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        for name in ("run-verify.py", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py"):
+            (legacy_scripts / name).write_text("legacy\n", encoding="utf-8")
+        (legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {
+                    "managed": ["verify-config.json", "run-verify.py", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py"],
+                    "preset": "python",
+                    "template": "codex-main",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # User-owned file at the new location, NO new-location manifest.
+        user_config = {"VERIFY_CMD": "echo user-owned", "VERIFY_SHELL": "direct", "PRIMARY_LOG_DIR": "user/log"}
+        new_verify = self.repo_root / ".claude" / "scripts" / "verify-config.json"
+        new_verify.parent.mkdir(parents=True, exist_ok=True)
+        new_verify.write_text(json.dumps(user_config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # Smart-mode → codex-main update.
+        agents_dir = self.repo_root / ".agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        (agents_dir / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main([])
+        self.assertEqual(exit_code, 0)
+
+        # User-owned new file untouched.
+        self.assertEqual(json.loads(new_verify.read_text(encoding="utf-8")), user_config)
+        # Legacy verify-config preserved (cleanup keeps unmigrated entries).
+        self.assertTrue((legacy_scripts / "verify-config.json").is_file())
+        self.assertEqual(json.loads((legacy_scripts / "verify-config.json").read_text(encoding="utf-8")), legacy_config)
+
+    def test_codex_main_update_mode_aborts_when_destination_path_is_a_file(self) -> None:
+        # Regression: structural preflight (non-directory at destination path)
+        # must fire in update/fresh modes too, not just init mode. Otherwise
+        # mkdir(...exist_ok=True) raises mid-flow after .agents/scripts copies
+        # already wrote files.
+        agents_scripts_path = self.repo_root / ".agents" / "scripts"
+        agents_scripts_path.parent.mkdir(parents=True, exist_ok=True)
+        agents_scripts_path.write_text("blocking file\n", encoding="utf-8")
+        # Seed manifests so smart-mode picks codex-main update.
+        (self.repo_root / ".agents" / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["--update"])
+        self.assertEqual(exit_code, 1)
+        # Blocking file untouched.
+        self.assertEqual(agents_scripts_path.read_text(encoding="utf-8"), "blocking file\n")
+
+    def test_project_init_aborts_when_destination_path_is_a_file(self) -> None:
+        # Regression: standard templates must run the structural preflight too,
+        # otherwise .claude/CLAUDE.md, .claude/settings.json, .claude/hooks etc.
+        # get written before .claude/scripts mkdir fails on a non-dir blocker.
+        claude_scripts_path = self.repo_root / ".claude" / "scripts"
+        claude_scripts_path.parent.mkdir(parents=True, exist_ok=True)
+        claude_scripts_path.write_text("blocking file\n", encoding="utf-8")
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["-t", "project-init", "python"])
+        self.assertEqual(exit_code, 1)
+        # No .claude/* writes occurred — preflight aborted before any I/O.
+        self.assertTrue(claude_scripts_path.is_file())
+        self.assertEqual(claude_scripts_path.read_text(encoding="utf-8"), "blocking file\n")
+        self.assertFalse((self.repo_root / ".claude" / "CLAUDE.md").exists())
+        self.assertFalse((self.repo_root / ".claude" / "settings.json").exists())
+
+    def test_split_scripts_corrupt_manifest_surfaces_before_any_writes(self) -> None:
+        # Regression: a malformed .agents/scripts/.claude-dotfiles-managed.json
+        # or .claude/scripts/.claude-dotfiles-managed.json would otherwise be
+        # read strictly later inside copy_runner_files_to / prune calls, after
+        # copy_template_tree() has already mutated the repo. Preflight must
+        # validate split-layout manifests too.
+        agents_scripts_manifest = self.repo_root / ".agents" / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME
+        agents_scripts_manifest.parent.mkdir(parents=True, exist_ok=True)
+        agents_scripts_manifest.write_text("{not json{\n", encoding="utf-8")
+        # Smart-mode → codex-main update.
+        (self.repo_root / ".agents" / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            json.dumps(
+                {"managed": ["AGENTS.md", "skills/codex-plan/SKILL.md"], "preset": "python", "template": "codex-main"},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["--update"])
+        self.assertEqual(exit_code, 1)
+        # No new writes — preflight aborted.
+        self.assertFalse((self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py").exists())
+        self.assertFalse((self.repo_root / ".claude" / "scripts").exists())
+
+    def test_legacy_scripts_cleanup_keeps_manifest_when_unlink_fails(self) -> None:
+        # Regression: if a legacy file can't be unlinked (locked / read-only,
+        # common on Windows), cleanup must keep that entry in the manifest so
+        # the next run retries instead of orphaning the file.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        unlinkable = legacy_scripts / "run-codex-impl-cycle.py"
+        unlinkable.write_text("legacy stuck\n", encoding="utf-8")
+        manifest_path = legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME
+        manifest_path.write_text(
+            json.dumps({"managed": ["run-codex-impl-cycle.py"]}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        # Simulate a locked file by patching Path.unlink to raise PermissionError
+        # for this specific path only.
+        original_unlink = self.runner.Path.unlink
+        def fake_unlink(self_path, *args, **kwargs):
+            if self_path == unlinkable:
+                raise PermissionError("simulated lock")
+            return original_unlink(self_path, *args, **kwargs)
+
+        with mock.patch.object(self.runner.Path, "unlink", fake_unlink):
+            self.runner.migrate_legacy_scripts_cleanup(
+                self.repo_root,
+                new_scripts_present={"run-codex-impl-cycle.py"},
+                template_runner_names={"run-codex-impl-cycle.py"},
+            )
+
+        # File still on disk, manifest preserved with the locked entry.
+        self.assertTrue(unlinkable.is_file())
+        self.assertTrue(manifest_path.is_file())
+        surviving = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertIn("run-codex-impl-cycle.py", surviving["managed"])
+
+    def test_legacy_scripts_corrupt_manifest_surfaces_error_in_non_fresh_modes(self) -> None:
+        # Regression: a corrupt legacy scripts/.claude-dotfiles-managed.json
+        # must NOT be silently swallowed in normal init/update modes — the
+        # tolerant fallback is reserved for --fresh recovery. Otherwise the
+        # repo's manifest corruption stays hidden and migration silently does
+        # nothing.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        (legacy_scripts / "verify-config.json").write_text("{\"VERIFY_CMD\":\"old\"}\n", encoding="utf-8")
+        (legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME).write_text("{not json{\n", encoding="utf-8")
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["-t", "codex-main", "python"])
+        self.assertEqual(exit_code, 1)
+        # Legacy file untouched — migration helpers never ran past the parse.
+        self.assertTrue((legacy_scripts / "verify-config.json").is_file())
+        # CRITICAL: no new files written either — early validation aborted
+        # before any I/O so the user can fix the manifest without a half-
+        # migrated tree.
+        self.assertFalse((self.repo_root / ".agents" / "scripts").exists())
+        self.assertFalse((self.repo_root / ".claude" / "scripts").exists())
+        self.assertFalse((self.repo_root / ".agents" / "AGENTS.md").exists())
+
+    def test_legacy_scripts_migration_recovers_from_malformed_manifest_under_fresh(self) -> None:
+        # Regression: --fresh is a recovery path and must tolerate corrupted
+        # legacy/new manifests in the migration helpers; otherwise a half-
+        # migrated repo with broken manifests cannot be repaired.
+        legacy_scripts = self.repo_root / "scripts"
+        legacy_scripts.mkdir(parents=True, exist_ok=True)
+        for name in ("run-verify.py", "verify-config.json", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py"):
+            (legacy_scripts / name).write_text("legacy\n", encoding="utf-8")
+        # Older retired shell runners that may have been managed by previous versions.
+        retired_legacy = ("run-verify.sh", "run-verify.ps1", "run-codex-plan-review.ps1", "run-codex-impl-review.ps1")
+        for name in retired_legacy:
+            (legacy_scripts / name).write_text("legacy retired\n", encoding="utf-8")
+        # Malformed legacy manifest.
+        (legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME).write_text(
+            "{not json{\n",
+            encoding="utf-8",
+        )
+        # Malformed new-location manifest at .claude/scripts.
+        new_scripts_manifest = self.repo_root / ".claude" / "scripts" / self.runner.WORKFLOW_MANIFEST_NAME
+        new_scripts_manifest.parent.mkdir(parents=True, exist_ok=True)
+        new_scripts_manifest.write_text("{also-not-json\n", encoding="utf-8")
+        # Pre-existing partial-migration verify-config at the new path.
+        (self.repo_root / ".claude" / "scripts" / "verify-config.json").write_text(
+            "{\"VERIFY_CMD\":\"old\"}\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(self.runner, "discover_portable_python_launcher", return_value="python3"):
+            with chdir(self.repo_root):
+                exit_code = self.runner.main(["-t", "codex-main", "python", "--fresh"])
+        self.assertEqual(exit_code, 0)
+        # New layout in place; the broken legacy manifest didn't block recovery.
+        self.assertTrue((self.repo_root / ".agents" / "scripts" / "run-codex-plan-review.py").is_file())
+        self.assertTrue((self.repo_root / ".claude" / "scripts" / "run-verify.py").is_file())
+        # Canonical-runner-set fallback lets cleanup remove the legacy files
+        # even though the manifest itself was unparseable. No orphans left,
+        # including older retired shell runners.
+        for name in ("run-verify.py", "verify-config.json", "run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py", "fix_codex_plugin_prompts.py", *retired_legacy):
+            self.assertFalse((legacy_scripts / name).exists(), name)
+        self.assertFalse((legacy_scripts / self.runner.WORKFLOW_MANIFEST_NAME).exists())
 
     def test_init_mode_errors_on_collision_without_manifest(self) -> None:
         # Init mode (no --fresh, no manifest) must refuse to half-install when a template

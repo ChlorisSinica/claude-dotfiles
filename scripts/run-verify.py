@@ -24,9 +24,9 @@ class VerifyConfig:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run repo verify command from scripts/verify-config.json and write status/log artifacts."
+        description="Run repo verify command from .claude/scripts/verify-config.json and write status/log artifacts."
     )
-    parser.add_argument("--config", default="scripts/verify-config.json")
+    parser.add_argument("--config", default=".claude/scripts/verify-config.json")
     parser.add_argument("--command")
     parser.add_argument("--shell")
     parser.add_argument("--log-dir")

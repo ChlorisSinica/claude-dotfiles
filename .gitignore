@@ -29,3 +29,10 @@ build/
 # Tracked template workflow assets
 !templates/codex-main/.agents/
 !templates/codex-main/.agents/**
+
+# Tracked dotfiles dogfood config
+!/.claude/
+/.claude/*
+!/.claude/scripts/
+/.claude/scripts/*
+!/.claude/scripts/verify-config.json

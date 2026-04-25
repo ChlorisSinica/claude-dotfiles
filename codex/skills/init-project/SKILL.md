@@ -62,10 +62,10 @@ Single entry point for both new scaffolding and workflow updates of the codex-ma
    - `.agents/skills/`
    - `.agents/context/`
    - `.agents/reviews/`
-   - `scripts/run-verify.py`
-   - `scripts/run-codex-plan-review.py`
-   - `scripts/run-codex-impl-review.py`
-   - `scripts/run-codex-impl-cycle.py`
+   - `.claude/scripts/run-verify.py`
+   - `.agents/scripts/run-codex-plan-review.py`
+   - `.agents/scripts/run-codex-impl-review.py`
+   - `.agents/scripts/run-codex-impl-cycle.py`
 
 ## Output
 

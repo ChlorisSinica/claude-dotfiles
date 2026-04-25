@@ -52,7 +52,7 @@
 
 ### preset 別の検証ツール
 
-`/init-project` は preset に合わせて `scripts/run-verify.py` 用の設定を生成します．検証を実行するには preset ごとの外部ツールが必要です．
+`/init-project` は preset に合わせて `.claude/scripts/run-verify.py` 用の設定を生成します．検証を実行するには preset ごとの外部ツールが必要です．
 
 | preset | 検証コマンド | 追加で必要なツール |
 |---|---|---|

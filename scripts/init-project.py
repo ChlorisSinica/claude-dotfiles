@@ -13,26 +13,27 @@ from pathlib import Path
 from typing import Any
 
 
-RUNNER_FILES = (
+CLAUDE_RUNNERS = ("run-verify.py",)
+AGENTS_RUNNERS = (
     "fix_codex_plugin_prompts.py",
     "run-codex-plan-review.py",
     "run-codex-impl-review.py",
     "run-codex-impl-cycle.py",
-    "run-verify.py",
 )
+RUNNER_FILES = AGENTS_RUNNERS + CLAUDE_RUNNERS
 SHELL_CONTROL_TOKENS = ("&&", "||", "|", ";", ">", "<", "$(")
 MIN_PYTHON = (3, 11)
-RETIRED_CODEX_RUNNERS = (
+RETIRED_AGENTS_RUNNERS = (
     "run-codex-plan-review.ps1",
     "run-codex-impl-review.ps1",
+)
+RETIRED_CLAUDE_RUNNERS = (
     "run-verify.sh",
     "run-verify.ps1",
 )
-RETIRED_STANDARD_RUNNERS = (
-    "run-verify.sh",
-    "run-verify.ps1",
-)
-CODEX_ONLY_RUNNERS = tuple(name for name in RUNNER_FILES if name != "run-verify.py")
+CLAUDE_SCRIPTS_REL = ".claude/scripts"
+AGENTS_SCRIPTS_REL = ".agents/scripts"
+LEGACY_SCRIPTS_REL = "scripts"
 WORKFLOW_MANIFEST_NAME = ".claude-dotfiles-managed.json"
 
 
@@ -485,7 +486,9 @@ def prune_manifest_owned_paths(root: Path, managed_entries: set[str], *, keep: s
 
 
 def require_existing_codex_runners(repo_root: Path) -> None:
-    missing = [name for name in ("run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py") if not (repo_root / "scripts" / name).is_file()]
+    needed = ("run-codex-plan-review.py", "run-codex-impl-review.py", "run-codex-impl-cycle.py")
+    agents_scripts = repo_root / AGENTS_SCRIPTS_REL
+    missing = [name for name in needed if not (agents_scripts / name).is_file()]
     if missing:
         joined = ", ".join(missing)
         raise RuntimeError(
@@ -493,16 +496,72 @@ def require_existing_codex_runners(repo_root: Path) -> None:
         )
 
 
-def copy_runner_files(
+def validate_pre_init_manifests(repo_root: Path, *, overwrite_unmanaged: bool) -> None:
+    """Surface manifest corruption BEFORE any new files are written. Covers
+    both the legacy scripts/.claude-dotfiles-managed.json and the split-layout
+    .agents/scripts/ + .claude/scripts/ manifests, all of which are read
+    strictly later inside the migration / copy / prune helpers. Without this
+    check, malformed-manifest errors would fire after copy_template_tree() and
+    settings writes have already mutated the repo, leaving a half-migrated
+    tree on a failed run.
+    --fresh recovery short-circuits because the downstream readers are
+    tolerant in that mode."""
+    if overwrite_unmanaged:
+        return
+    candidates: list[Path] = []
+    if not is_dotfiles_source_repo(repo_root):
+        candidates.append(repo_root / LEGACY_SCRIPTS_REL / WORKFLOW_MANIFEST_NAME)
+    candidates.append(repo_root / AGENTS_SCRIPTS_REL / WORKFLOW_MANIFEST_NAME)
+    candidates.append(repo_root / CLAUDE_SCRIPTS_REL / WORKFLOW_MANIFEST_NAME)
+    for path in candidates:
+        if path.is_file():
+            read_workflow_manifest(path)
+
+
+def check_runner_destinations(
+    *destinations: tuple[Path, tuple[str, ...], str],
+    force: bool,
+) -> None:
+    """Preflight collisions across runner destinations. Strictly read-only.
+    Always raises if a destination path (or its workflow-root parent) exists
+    as a non-directory, because mkdir(...exist_ok=True) would fail later
+    regardless of force. When force=False (init mode), also raises on
+    per-file name collisions so multi-destination init aborts before writing
+    anything. When force=True, per-file collisions are tolerated by the copy
+    layer and skipped here.
+    Each destination is a (dest_dir, names, rel_dir) tuple."""
+    collisions: list[str] = []
+    for dest_scripts_dir, names, rel_dir in destinations:
+        # Structural: any ancestor existing as a non-directory blocks mkdir.
+        for ancestor in (dest_scripts_dir, dest_scripts_dir.parent):
+            if ancestor.exists() and not ancestor.is_dir():
+                rel = rel_dir if ancestor == dest_scripts_dir else rel_dir.split("/", 1)[0]
+                collisions.append(rel)
+                break
+        else:
+            if not dest_scripts_dir.exists() or force:
+                continue
+            manifest_path = dest_scripts_dir / WORKFLOW_MANIFEST_NAME
+            previously_managed = (
+                read_workflow_manifest(manifest_path) if manifest_path.is_file() else set()
+            )
+            for name in names:
+                if (dest_scripts_dir / name).exists() and name not in previously_managed:
+                    collisions.append(f"{rel_dir}/{name}")
+    if collisions:
+        raise InitCollisionError(sorted(set(collisions)))
+
+
+def copy_runner_files_to(
     source_scripts_dir: Path,
-    dest_repo_root: Path,
+    dest_scripts_dir: Path,
+    names: tuple[str, ...],
     *,
+    rel_dir: str,
     force: bool,
     overwrite_unmanaged: bool = False,
 ) -> set[str]:
-    dest_scripts_dir = dest_repo_root / "scripts"
     dest_scripts_dir.mkdir(parents=True, exist_ok=True)
-    expected: set[str] = set()
     manifest_path = dest_scripts_dir / WORKFLOW_MANIFEST_NAME
     previously_managed = (
         read_workflow_manifest_tolerant(manifest_path)
@@ -511,13 +570,14 @@ def copy_runner_files(
     )
     if not force:
         collisions = [
-            f"scripts/{name}"
-            for name in RUNNER_FILES
+            f"{rel_dir}/{name}"
+            for name in names
             if (dest_scripts_dir / name).exists() and name not in previously_managed
         ]
         if collisions:
             raise InitCollisionError(sorted(collisions))
-    for name in RUNNER_FILES:
+    expected: set[str] = set()
+    for name in names:
         src = source_scripts_dir / name
         if not src.is_file():
             raise FileNotFoundError(f"Required runner not found: {src}")
@@ -532,6 +592,178 @@ def copy_runner_files(
         shutil.copy2(src, dst)
         expected.add(name)
     return expected
+
+
+def is_dotfiles_source_repo(repo_root: Path) -> bool:
+    """Detect whether init-project is being run on the dotfiles source repo
+    itself. In that case, scripts/ is the master copy directory consumed by
+    discover_script_source_dir() and must never be migrated."""
+    return repo_root.resolve() == repo_root_from_script().resolve()
+
+
+def read_legacy_scripts_manifest(
+    repo_root: Path,
+    *,
+    overwrite_unmanaged: bool = False,
+) -> tuple[Path, Path, set[str]] | None:
+    """Return (legacy_scripts_dir, legacy_manifest_path, managed_set) if a
+    pre-(C) legacy manifest exists at scripts/.claude-dotfiles-managed.json,
+    otherwise None. Returns None on the dotfiles source repo.
+    Manifest parse errors surface as RuntimeError in normal init/update modes
+    so the user sees the corruption. Under --fresh (overwrite_unmanaged=True)
+    a corrupt manifest falls back to the canonical runner set so cleanup can
+    still remove the deprecated scripts/* files instead of orphaning them on
+    disk after the manifest is dropped."""
+    if is_dotfiles_source_repo(repo_root):
+        return None
+    legacy_scripts = repo_root / LEGACY_SCRIPTS_REL
+    legacy_manifest = legacy_scripts / WORKFLOW_MANIFEST_NAME
+    if not legacy_manifest.is_file():
+        return None
+    try:
+        managed = read_workflow_manifest(legacy_manifest)
+    except RuntimeError:
+        if not overwrite_unmanaged:
+            raise
+        # Recovery fallback must include retired runner names too, so files
+        # like run-verify.sh / run-codex-plan-review.ps1 left over from older
+        # versions get cleaned up alongside the current runner set.
+        managed = (
+            set(AGENTS_RUNNERS)
+            | set(CLAUDE_RUNNERS)
+            | set(RETIRED_AGENTS_RUNNERS)
+            | set(RETIRED_CLAUDE_RUNNERS)
+            | {"verify-config.json"}
+        )
+    return legacy_scripts, legacy_manifest, managed
+
+
+def migrate_legacy_scripts_carry_forward(
+    repo_root: Path,
+    *,
+    overwrite_unmanaged: bool = False,
+) -> set[str]:
+    """Copy user-customizable legacy files (verify-config.json) to the new
+    location BEFORE the main copy/write flow runs and report which ones the
+    caller should track in the new manifest.
+    Carrying the content over preserves repo-specific VERIFY_CMD / VERIFY_SHELL
+    / PRIMARY_LOG_DIR overrides at migration time; reporting them back lets the
+    caller add them to expected_* so the new .claude/scripts/ manifest treats
+    them as managed (consistent with their pre-(C) managed status), instead of
+    leaving an orphaned, untracked file.
+    Returns the set of relative names carried forward; empty if no legacy
+    manifest is present or the dotfiles source repo is detected.
+    Cheap and non-destructive: only copies, never deletes."""
+    carried: set[str] = set()
+    legacy_state = read_legacy_scripts_manifest(repo_root, overwrite_unmanaged=overwrite_unmanaged)
+    if legacy_state is None:
+        return carried
+    legacy_scripts, _, managed = legacy_state
+    if "verify-config.json" not in managed:
+        return carried
+    legacy_verify = legacy_scripts / "verify-config.json"
+    new_verify = repo_root / CLAUDE_SCRIPTS_REL / "verify-config.json"
+    if not legacy_verify.is_file():
+        return carried
+    if new_verify.exists():
+        # Partial-migration recovery only fires when the new file came from a
+        # prior init-project run (i.e. it is recorded in the new-location
+        # manifest). Otherwise the file is user-owned and must be left alone —
+        # the same precedence write_verify_config / copy_runner_files_to use
+        # for unmanaged collisions. Use the tolerant manifest read so a
+        # malformed new-location manifest does not block recovery (--fresh
+        # specifically guarantees corrupt-manifest tolerance).
+        new_manifest_path = repo_root / CLAUDE_SCRIPTS_REL / WORKFLOW_MANIFEST_NAME
+        new_managed = (
+            read_workflow_manifest_tolerant(new_manifest_path) if new_manifest_path.is_file() else set()
+        )
+        if "verify-config.json" not in new_managed:
+            return carried
+        try:
+            if read_text(legacy_verify) != read_text(new_verify):
+                shutil.copy2(legacy_verify, new_verify)
+        except OSError:
+            return carried
+    else:
+        new_verify.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy_verify, new_verify)
+    carried.add("verify-config.json")
+    return carried
+
+
+def migrate_legacy_scripts_cleanup(
+    repo_root: Path,
+    *,
+    new_scripts_present: set[str],
+    template_runner_names: set[str],
+    overwrite_unmanaged: bool = False,
+) -> None:
+    """Remove the pre-(C) scripts/ layout AFTER the new layout is in place.
+    Called only once the main copy/write flow has succeeded so that a collision
+    or copy failure leaves the legacy state intact (atomic from the user's
+    perspective).
+    A legacy entry is deleted when EITHER:
+      - It belongs to this template's runner set AND was successfully placed
+        at the new location (in ``new_scripts_present``), or
+      - It is not part of this template's runner set at all (intentional drop —
+        e.g. retired shell runners, or codex runners on a project-init
+        migration that has no agents-side destination).
+    A legacy entry is kept (with the manifest re-written to track only the
+    surviving entries) when it belongs to the template but the new copy was
+    skipped — typically because the user already had an unmanaged file at the
+    new path. Keeping the legacy copy avoids silently losing the old managed
+    file when nothing was actually migrated to replace it.
+    Only files recorded in the legacy manifest are touched; user files placed
+    under scripts/ are left alone."""
+    legacy_state = read_legacy_scripts_manifest(repo_root, overwrite_unmanaged=overwrite_unmanaged)
+    if legacy_state is None:
+        return
+    legacy_scripts, legacy_manifest, managed = legacy_state
+    # Tolerate malformed legacy manifests when reading the preset/template
+    # tags: cleanup runs after new files are in place and must never abort
+    # mid-flow. read_legacy_scripts_manifest already enforced the strict-vs-
+    # tolerant policy for `managed`; here we just read tags defensively.
+    try:
+        legacy_data = read_workflow_manifest_data(legacy_manifest)
+        legacy_preset = legacy_data.preset
+        legacy_template = legacy_data.template
+    except (RuntimeError, OSError):
+        legacy_preset = None
+        legacy_template = None
+
+    remaining: set[str] = set()
+    for name in managed:
+        if name in template_runner_names and name not in new_scripts_present:
+            remaining.add(name)
+            continue
+        path = legacy_scripts / name
+        if path.is_file():
+            try:
+                path.unlink()
+            except OSError:
+                # File locked or read-only (common on Windows for .ps1 runners).
+                # Keep tracking it so the manifest survives and the next run
+                # can retry the cleanup instead of orphaning the file.
+                remaining.add(name)
+
+    if remaining:
+        write_workflow_manifest(
+            legacy_manifest,
+            remaining,
+            preset=legacy_preset,
+            template=legacy_template,
+        )
+        return
+
+    try:
+        legacy_manifest.unlink()
+    except OSError:
+        pass
+    if legacy_scripts.is_dir():
+        try:
+            legacy_scripts.rmdir()
+        except OSError:
+            pass
 
 
 def command_requires_shell(command: str) -> bool:
@@ -585,10 +817,10 @@ def infer_existing_python_launcher(repo_root: Path) -> str | None:
         repo_root / ".agents" / "AGENTS.md",
     )
     patterns = (
-        r"`([^`\r\n]+?)\s+scripts/run-codex-plan-review\.py\b",
-        r"`([^`\r\n]+?)\s+scripts/run-codex-impl-review\.py\b",
-        r"`([^`\r\n]+?)\s+scripts/run-codex-impl-cycle\.py\b",
-        r"`([^`\r\n]+?)\s+scripts/run-verify\.py\b",
+        r"`([^`\r\n]+?)\s+(?:\.agents/scripts|scripts)/run-codex-plan-review\.py\b",
+        r"`([^`\r\n]+?)\s+(?:\.agents/scripts|scripts)/run-codex-impl-review\.py\b",
+        r"`([^`\r\n]+?)\s+(?:\.agents/scripts|scripts)/run-codex-impl-cycle\.py\b",
+        r"`([^`\r\n]+?)\s+(?:\.claude/scripts|scripts)/run-verify\.py\b",
     )
     for path in candidates:
         if not path.is_file():
@@ -674,21 +906,22 @@ def merge_local_settings(existing_text: str | None, managed: dict[str, Any]) -> 
     return merged
 
 def write_verify_config(
-    dest_repo_root: Path,
+    dest_scripts_dir: Path,
     preset: dict[str, Any],
     *,
+    rel_dir: str,
     force: bool,
     log_dir: str,
     launcher: str,
     previously_managed: set[str],
     overwrite_unmanaged: bool = False,
 ) -> bool:
-    path = dest_repo_root / "scripts" / "verify-config.json"
+    path = dest_scripts_dir / "verify-config.json"
     rel = "verify-config.json"
     if path.exists():
         if not force:
             if rel not in previously_managed:
-                raise InitCollisionError([f"scripts/{rel}"])
+                raise InitCollisionError([f"{rel_dir}/{rel}"])
             return True
         if rel not in previously_managed and not overwrite_unmanaged:
             return False
@@ -763,18 +996,18 @@ def build_local_settings(verify_cmd: str) -> dict[str, Any]:
         "Bash(cat .agents/context/*)",
         "WebSearch",
         "WebFetch",
-        "Bash(python scripts/run-codex-plan-review.py:*)",
-        "Bash(python scripts/run-codex-impl-review.py:*)",
-        "Bash(python scripts/run-codex-impl-cycle.py:*)",
-        "Bash(python scripts/run-verify.py:*)",
-        "Bash(python3 scripts/run-codex-plan-review.py:*)",
-        "Bash(python3 scripts/run-codex-impl-review.py:*)",
-        "Bash(python3 scripts/run-codex-impl-cycle.py:*)",
-        "Bash(python3 scripts/run-verify.py:*)",
-        "Bash(py -3 scripts/run-codex-plan-review.py:*)",
-        "Bash(py -3 scripts/run-codex-impl-review.py:*)",
-        "Bash(py -3 scripts/run-codex-impl-cycle.py:*)",
-        "Bash(py -3 scripts/run-verify.py:*)",
+        "Bash(python .agents/scripts/run-codex-plan-review.py:*)",
+        "Bash(python .agents/scripts/run-codex-impl-review.py:*)",
+        "Bash(python .agents/scripts/run-codex-impl-cycle.py:*)",
+        "Bash(python .claude/scripts/run-verify.py:*)",
+        "Bash(python3 .agents/scripts/run-codex-plan-review.py:*)",
+        "Bash(python3 .agents/scripts/run-codex-impl-review.py:*)",
+        "Bash(python3 .agents/scripts/run-codex-impl-cycle.py:*)",
+        "Bash(python3 .claude/scripts/run-verify.py:*)",
+        "Bash(py -3 .agents/scripts/run-codex-plan-review.py:*)",
+        "Bash(py -3 .agents/scripts/run-codex-impl-review.py:*)",
+        "Bash(py -3 .agents/scripts/run-codex-impl-cycle.py:*)",
+        "Bash(py -3 .claude/scripts/run-verify.py:*)",
     ]
     stripped_verify = verify_cmd.strip()
     if stripped_verify:
@@ -831,9 +1064,9 @@ def build_standard_local_settings(
         "Bash(cat .claude/context/*)",
         "WebSearch",
         "WebFetch",
-        "Bash(python scripts/run-verify.py:*)",
-        "Bash(python3 scripts/run-verify.py:*)",
-        "Bash(py -3 scripts/run-verify.py:*)",
+        "Bash(python .claude/scripts/run-verify.py:*)",
+        "Bash(python3 .claude/scripts/run-verify.py:*)",
+        "Bash(py -3 .claude/scripts/run-verify.py:*)",
     ]
     if syntax_enabled:
         syntax_allow = {
@@ -1264,50 +1497,8 @@ if __name__ == "__main__":
     return managed
 
 
-def copy_named_runner_files(
-    source_scripts_dir: Path,
-    dest_repo_root: Path,
-    names: tuple[str, ...],
-    *,
-    force: bool,
-    overwrite_unmanaged: bool = False,
-) -> set[str]:
-    dest_scripts_dir = dest_repo_root / "scripts"
-    dest_scripts_dir.mkdir(parents=True, exist_ok=True)
-    expected: set[str] = set()
-    manifest_path = dest_scripts_dir / WORKFLOW_MANIFEST_NAME
-    previously_managed = (
-        read_workflow_manifest_tolerant(manifest_path)
-        if overwrite_unmanaged
-        else read_workflow_manifest(manifest_path)
-    )
-    if not force:
-        collisions = [
-            f"scripts/{name}"
-            for name in names
-            if (dest_scripts_dir / name).exists() and name not in previously_managed
-        ]
-        if collisions:
-            raise InitCollisionError(sorted(collisions))
-    for name in names:
-        src = source_scripts_dir / name
-        if not src.is_file():
-            raise FileNotFoundError(f"Required runner not found: {src}")
-        dst = dest_scripts_dir / name
-        if dst.exists():
-            if not force:
-                if name in previously_managed:
-                    expected.add(name)
-                continue
-            if name not in previously_managed and not overwrite_unmanaged:
-                continue
-        shutil.copy2(src, dst)
-        expected.add(name)
-    return expected
-
-
 def prune_retired_runner_files(
-    dest_repo_root: Path,
+    dest_scripts_dir: Path,
     names: tuple[str, ...],
     *,
     force: bool,
@@ -1316,26 +1507,24 @@ def prune_retired_runner_files(
     template_name: str | None = None,
     overwrite_unmanaged: bool = False,
 ) -> None:
-    scripts_dir = dest_repo_root / "scripts"
-    scripts_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = scripts_dir / WORKFLOW_MANIFEST_NAME
+    dest_scripts_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = dest_scripts_dir / WORKFLOW_MANIFEST_NAME
     previously_managed = (
         read_workflow_manifest_tolerant(manifest_path)
         if overwrite_unmanaged
         else read_workflow_manifest(manifest_path)
     )
     if force:
-        retired = set(names)
         for name in names:
             if name in expected or name not in previously_managed:
                 continue
-            path = scripts_dir / name
+            path = dest_scripts_dir / name
             if path.exists():
                 path.unlink()
     manifest_entries = set(expected)
     if not force:
         manifest_entries.update(
-            entry for entry in previously_managed if (scripts_dir / entry).exists()
+            entry for entry in previously_managed if (dest_scripts_dir / entry).exists()
         )
     write_workflow_manifest(
         manifest_path,
@@ -1371,6 +1560,16 @@ def initialize_codex_main(
     )
     preset["PYTHON_LAUNCHER"] = launcher
     preset["VERIFY_CMD"] = materialize_verify_command(str(preset.get("VERIFY_CMD", "")).strip(), launcher)
+    # All preflight checks run BEFORE any I/O so a failure leaves the repo
+    # untouched. skills_only mode operates only on .agents/skills and never
+    # touches scripts/ destinations, so it doesn't need these checks.
+    if not skills_only:
+        validate_pre_init_manifests(repo_root, overwrite_unmanaged=overwrite_unmanaged)
+        check_runner_destinations(
+            (repo_root / AGENTS_SCRIPTS_REL, AGENTS_RUNNERS, AGENTS_SCRIPTS_REL),
+            (repo_root / CLAUDE_SCRIPTS_REL, CLAUDE_RUNNERS + ("verify-config.json",), CLAUDE_SCRIPTS_REL),
+            force=force,
+        )
     # In --fresh recovery mode (overwrite_unmanaged=True), swallow manifest parse
     # errors so a corrupt manifest does not block reinitialization.
     _read_manifest = read_workflow_manifest_tolerant if overwrite_unmanaged else read_workflow_manifest
@@ -1408,29 +1607,75 @@ def initialize_codex_main(
         overwrite_unmanaged=overwrite_unmanaged,
     )
     if not skills_only:
-        expected_scripts = copy_runner_files(
+        agents_scripts_dir = repo_root / AGENTS_SCRIPTS_REL
+        claude_scripts_dir = repo_root / CLAUDE_SCRIPTS_REL
+        expected_agents_scripts = copy_runner_files_to(
             source_scripts_dir,
-            repo_root,
+            agents_scripts_dir,
+            AGENTS_RUNNERS,
+            rel_dir=AGENTS_SCRIPTS_REL,
             force=force,
             overwrite_unmanaged=overwrite_unmanaged,
         )
-        if write_verify_config(
+        prune_retired_runner_files(
+            agents_scripts_dir,
+            RETIRED_AGENTS_RUNNERS,
+            force=force,
+            expected=expected_agents_scripts,
+            preset_name=preset_name,
+            template_name="codex-main",
+            overwrite_unmanaged=overwrite_unmanaged,
+        )
+        claude_scripts_manifest = _read_manifest(claude_scripts_dir / WORKFLOW_MANIFEST_NAME)
+        expected_claude_scripts = copy_runner_files_to(
+            source_scripts_dir,
+            claude_scripts_dir,
+            CLAUDE_RUNNERS,
+            rel_dir=CLAUDE_SCRIPTS_REL,
+            force=force,
+            overwrite_unmanaged=overwrite_unmanaged,
+        )
+        # Carry-forward runs only after the collision-prone copy_runner_files_to
+        # calls succeeded, so an InitCollisionError above never leaves a
+        # half-migrated .claude/scripts/verify-config.json behind.
+        carried_to_claude = migrate_legacy_scripts_carry_forward(
             repo_root,
+            overwrite_unmanaged=overwrite_unmanaged,
+        )
+        if "verify-config.json" in carried_to_claude:
+            # Preserve the carried-forward content but track it as managed in
+            # the new manifest, so future updates treat it consistently with
+            # any other managed file.
+            expected_claude_scripts.add("verify-config.json")
+        elif write_verify_config(
+            claude_scripts_dir,
             preset,
+            rel_dir=CLAUDE_SCRIPTS_REL,
             force=force,
             log_dir=".agents/logs/verify",
             launcher=launcher,
-            previously_managed=_read_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
+            previously_managed=claude_scripts_manifest,
             overwrite_unmanaged=overwrite_unmanaged,
         ):
-            expected_scripts.add("verify-config.json")
+            expected_claude_scripts.add("verify-config.json")
         prune_retired_runner_files(
-            repo_root,
-            RETIRED_CODEX_RUNNERS,
+            claude_scripts_dir,
+            RETIRED_CLAUDE_RUNNERS,
             force=force,
-            expected=expected_scripts,
+            expected=expected_claude_scripts,
             preset_name=preset_name,
             template_name="codex-main",
+            overwrite_unmanaged=overwrite_unmanaged,
+        )
+        # Defer legacy cleanup until everything above succeeded so a collision
+        # or copy failure leaves the legacy scripts/ contents intact. Pass the
+        # set of files actually placed at new locations so cleanup never deletes
+        # a legacy file that wasn't replaced (e.g. when the user already had
+        # an unmanaged file at the new path and the copy was skipped).
+        migrate_legacy_scripts_cleanup(
+            repo_root,
+            new_scripts_present=expected_agents_scripts | expected_claude_scripts,
+            template_runner_names=set(AGENTS_RUNNERS) | set(CLAUDE_RUNNERS) | {"verify-config.json"},
             overwrite_unmanaged=overwrite_unmanaged,
         )
         claude_manifest_path = repo_root / ".claude" / WORKFLOW_MANIFEST_NAME
@@ -1479,6 +1724,13 @@ def initialize_standard_template(
     preset["VERIFY_CMD"] = materialize_verify_command(str(preset.get("VERIFY_CMD", "")).strip(), launcher)
 
     repo_root = Path.cwd().resolve()
+    # All preflight checks run BEFORE any I/O so a failure leaves the repo
+    # untouched (no .claude/CLAUDE.md, no .claude/settings.json, no scripts).
+    validate_pre_init_manifests(repo_root, overwrite_unmanaged=overwrite_unmanaged)
+    check_runner_destinations(
+        (repo_root / CLAUDE_SCRIPTS_REL, CLAUDE_RUNNERS + ("verify-config.json",), CLAUDE_SCRIPTS_REL),
+        force=force,
+    )
     # In --fresh recovery mode, swallow manifest parse errors.
     _read_manifest = read_workflow_manifest_tolerant if overwrite_unmanaged else read_workflow_manifest
     dest_claude_dir = repo_root / ".claude"
@@ -1495,31 +1747,52 @@ def initialize_standard_template(
         overwrite_unmanaged=overwrite_unmanaged,
     )
     seed_standard_context(dest_claude_dir, force=force, workflow_only=workflow_only)
-    expected_scripts = copy_named_runner_files(
+    claude_scripts_dir = repo_root / CLAUDE_SCRIPTS_REL
+    claude_scripts_manifest = _read_manifest(claude_scripts_dir / WORKFLOW_MANIFEST_NAME)
+    expected_scripts = copy_runner_files_to(
         source_scripts_dir,
-        repo_root,
-        ("run-verify.py",),
+        claude_scripts_dir,
+        CLAUDE_RUNNERS,
+        rel_dir=CLAUDE_SCRIPTS_REL,
         force=force,
         overwrite_unmanaged=overwrite_unmanaged,
     )
-    if write_verify_config(
+    # Carry-forward runs only after the collision-prone copy succeeded.
+    carried_to_claude = migrate_legacy_scripts_carry_forward(
         repo_root,
+        overwrite_unmanaged=overwrite_unmanaged,
+    )
+    if "verify-config.json" in carried_to_claude:
+        expected_scripts.add("verify-config.json")
+    elif write_verify_config(
+        claude_scripts_dir,
         preset,
+        rel_dir=CLAUDE_SCRIPTS_REL,
         force=force,
         log_dir=".claude/logs/verify",
         launcher=launcher,
-        previously_managed=_read_manifest((repo_root / "scripts" / WORKFLOW_MANIFEST_NAME)),
+        previously_managed=claude_scripts_manifest,
         overwrite_unmanaged=overwrite_unmanaged,
     ):
         expected_scripts.add("verify-config.json")
     prune_retired_runner_files(
-        repo_root,
-        RETIRED_STANDARD_RUNNERS + CODEX_ONLY_RUNNERS,
+        claude_scripts_dir,
+        RETIRED_CLAUDE_RUNNERS + AGENTS_RUNNERS,
         force=force,
         expected=expected_scripts,
         overwrite_unmanaged=overwrite_unmanaged,
         preset_name=preset_name,
         template_name=template_name,
+    )
+    # Defer legacy cleanup until everything above succeeded so a collision
+    # or copy failure leaves the legacy scripts/ contents intact. Standard
+    # templates have no agents-side destination, so codex runners listed in
+    # the legacy manifest are intentionally dropped here.
+    migrate_legacy_scripts_cleanup(
+        repo_root,
+        new_scripts_present=expected_scripts,
+        template_runner_names=set(CLAUDE_RUNNERS) | {"verify-config.json"},
+        overwrite_unmanaged=overwrite_unmanaged,
     )
     is_research = template_name == "research-survey"
     syntax_enabled = bool(preset.get("SYNTAX_CHECK_ENABLED", False)) and bool(str(preset.get("SYNTAX_CHECK_CMD", "")).strip())
@@ -1686,7 +1959,7 @@ def main(argv: list[str] | None = None) -> int:
                 overwrite_unmanaged=overwrite_unmanaged,
             )
             print(f"Initialized codex-main preset: {preset_name}")
-            print("Created/updated: .agents/, .claude/settings.json, .claude/settings.local.json(.bak), scripts/*.py, .gitignore")
+            print("Created/updated: .agents/, .agents/scripts/run-codex-*.py, .claude/settings.json, .claude/settings.local.json(.bak), .claude/scripts/run-verify.py, .claude/scripts/verify-config.json, .gitignore")
         else:
             initialize_standard_template(
                 template,
@@ -1696,7 +1969,7 @@ def main(argv: list[str] | None = None) -> int:
                 overwrite_unmanaged=overwrite_unmanaged,
             )
             print(f"Initialized template {template}: {preset_name}")
-            print("Created/updated: .claude/, scripts/run-verify.py, scripts/verify-config.json, .gitignore")
+            print("Created/updated: .claude/, .claude/scripts/run-verify.py, .claude/scripts/verify-config.json, .gitignore")
     except InitCollisionError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

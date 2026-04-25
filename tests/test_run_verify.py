@@ -139,7 +139,8 @@ class RunVerifyTests(unittest.TestCase):
         self.assertTrue(second_log.is_file())
 
     def test_main_reports_shell_resolution_failure(self) -> None:
-        config_path = self.repo_root / "scripts" / "verify-config.json"
+        config_path = self.repo_root / ".claude" / "scripts" / "verify-config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(
             json.dumps(
                 {

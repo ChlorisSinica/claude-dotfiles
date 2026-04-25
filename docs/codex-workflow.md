@@ -39,7 +39,7 @@ python scripts/setup.py -f --codex  # 管理下のファイルを上書き更新
   - preset 不一致: 終了コード 3 と警告．承認は `--accept-preset-change`
 - プロジェクト内のワークフロー
   - 調査，計画，実装は `.agents/skills/*` と `.agents/prompts/*`
-  - review / verify の機械処理だけ `scripts/run-codex-*.py` と `scripts/run-verify.py`
+  - review / verify の機械処理だけ `.agents/scripts/run-codex-*.py` と `.claude/scripts/run-verify.py`
 
 要するに，`$init-project` は唯一の呼び出し，`.py` は雛形の作成と更新の本体，日々の開発フローはプロジェクト内の `.agents/` で回す構成です．
 
@@ -88,10 +88,10 @@ $init-project → $codex-research → $codex-plan
 - `$codex-research` はコードベース理解を `.agents/context/research.md` に残す
 - `$codex-plan` は設計とタスクリストを `.agents/context/plan.md`, `.agents/context/tasks.md` に残す
 - `$codex-plan-review` は plan/tasks を設計判断と記述品質に分けて収束レビューし，中間結果を `.agents/context/codex_plan_*.md`，共有用結果を `.agents/reviews/` に残す
-- `$codex-implement` は task 単位で実装し，drift audit，verify wrapper fallback，runtime の boundary-based triage を入れつつ `scripts/run-verify.py` で検証する
+- `$codex-implement` は task 単位で実装し，drift audit，verify wrapper fallback，runtime の boundary-based triage を入れつつ `.claude/scripts/run-verify.py` で検証する
 - `$codex-impl-review` は実装変更を品質・整合性・recovery を切り分けながら収束レビューし，中間結果を `.agents/context/codex_impl_review.md`，共有用結果を `.agents/reviews/impl-review.md` に残す
 - `$handover-skills` は長い cycle の skill 問題点と再開手順を handover artifact に残す
-- review runner の正規実行経路は `<python-launcher> scripts/run-codex-*.py ...`
+- review runner の正規実行経路は `<python-launcher> .agents/scripts/run-codex-*.py ...`
 - review runner の既定 model / reasoning effort は `gpt-5.4 / high`
 - `xhigh` は architecture の難所や 1 回限りの深掘りだけに使い，通常 rerun の既定にはしない
 - `gpt-5.4-mini` は軽量 rerun 専用で，architecture gate や final gate の既定にはしない
@@ -110,7 +110,7 @@ $init-project → $codex-research → $codex-plan
 
 - `setup / init / update` は Python runner を正規実装にする
 - `research / plan / implement` はプロジェクト内の `skills + prompts` を主役にする
-- review は `skills + prompts` と `scripts/run-codex-*.py` の二層で扱う
+- review は `skills + prompts` と `.agents/scripts/run-codex-*.py` の二層で扱う
 - `skills + prompts` は review 観点，停止条件，どのフェーズへ進むかを定義する
 - review runner は bundle 組み立て，`codex review -` 実行，結果保存のような機械的処理だけを担う
 - 実装都合で runner を足しても，workflow の判断ロジック本体は `skills` 側に残す
@@ -127,10 +127,10 @@ $init-project → $codex-research → $codex-plan
 - `.agents/templates/`
 - `.claude/settings.json`
 - `.claude/settings.local.json.bak`
-- `scripts/run-verify.py`
-- `scripts/run-codex-plan-review.py`
-- `scripts/run-codex-impl-review.py`
-- `scripts/run-codex-impl-cycle.py`
+- `.claude/scripts/run-verify.py`
+- `.agents/scripts/run-codex-plan-review.py`
+- `.agents/scripts/run-codex-impl-review.py`
+- `.agents/scripts/run-codex-impl-cycle.py`
 
 ## 反映タイミング
 
@@ -145,10 +145,10 @@ $init-project → $codex-research → $codex-plan
 |---|---|---|---|
 | `codex-research` | コードベース調査 | `.agents/context/research.md` | — |
 | `codex-plan` | 設計とタスクリスト作成 | `.agents/context/plan.md`, `.agents/context/tasks.md` | — |
-| `codex-plan-review` | plan / tasks の収束レビュー | 中間: `.agents/context/codex_plan_*.md`，共有: `.agents/reviews/` | `scripts/run-codex-plan-review.py` |
-| `codex-implement` | task 単位の実装と検証 | コード変更，verify ログ | `scripts/run-verify.py` |
-| `codex-impl-review` | 実装変更の収束レビュー | 中間: `.agents/context/codex_impl_review.md`，共有: `.agents/reviews/impl-review.md` | `scripts/run-codex-impl-review.py` |
-| `codex-fkin-impl-cycle` | 実装と review cycle の自動周回 | 上記の集約 | `scripts/run-codex-impl-cycle.py` |
+| `codex-plan-review` | plan / tasks の収束レビュー | 中間: `.agents/context/codex_plan_*.md`，共有: `.agents/reviews/` | `.agents/scripts/run-codex-plan-review.py` |
+| `codex-implement` | task 単位の実装と検証 | コード変更，verify ログ | `.claude/scripts/run-verify.py` |
+| `codex-impl-review` | 実装変更の収束レビュー | 中間: `.agents/context/codex_impl_review.md`，共有: `.agents/reviews/impl-review.md` | `.agents/scripts/run-codex-impl-review.py` |
+| `codex-fkin-impl-cycle` | 実装と review cycle の自動周回 | 上記の集約 | `.agents/scripts/run-codex-impl-cycle.py` |
 | `codex-review` | 単発のレビュー | `.agents/reviews/` | — |
 | `handover-skills` | 長い cycle の引き継ぎ整理 | handover artifact | — |
 | `sonnet-dp-research-bridge` | 必要時に Claude / Sonnet へ人力で調査を委譲 | `.agents/context/` | — |

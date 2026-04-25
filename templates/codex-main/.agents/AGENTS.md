@@ -21,7 +21,7 @@
 7. 実装がまとまったら `codex-impl-review` で収束するまで review / 修正を回す
 8. 長い review や recovery / alignment が続いたら、必要に応じて `handover-skills` で再開手順を残す
 9. review 結果を `.agents/reviews/` に保存する
-10. プロジェクト全体検証は `{{PYTHON_LAUNCHER}} scripts/run-verify.py` を優先する
+10. プロジェクト全体検証は `{{PYTHON_LAUNCHER}} .claude/scripts/run-verify.py` を優先する
 
 ## 作業ルール
 
@@ -37,8 +37,8 @@
 - `research / plan / implement` の判断と進行は `skills` と `prompts` を主役にする
 - review は二層に分ける
 - `skills / prompts` は review の観点、停止条件、次に何をするかを定義する
-- `scripts/run-codex-*.py` は 1 実行 = 1 cycle の bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
-- review runner の実行は `{{PYTHON_LAUNCHER}} scripts/...py` を正規経路にする
+- `.agents/scripts/run-codex-*.py` は 1 実行 = 1 cycle の bundle 作成、`codex review -` 実行、結果保存など機械的処理だけを担う
+- review runner の実行は `{{PYTHON_LAUNCHER}} .agents/scripts/...py` を正規経路にする
 - review runner に運用ルールを重複実装しすぎない
 
 ## コミットメッセージ
@@ -77,9 +77,9 @@
   - `plan-review.md`
   - `impl-review.md`
 - `.agents/templates/` : 再利用用テンプレート
-- `scripts/run-codex-plan-review.py` : plan review runner
-- `scripts/run-codex-impl-review.py` : impl review runner
-- `scripts/run-verify.py` : verify runner
+- `.agents/scripts/run-codex-plan-review.py` : plan review runner
+- `.agents/scripts/run-codex-impl-review.py` : impl review runner
+- `.claude/scripts/run-verify.py` : verify runner
 
 ## Sonnet Bridge
 
