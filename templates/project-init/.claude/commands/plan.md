@@ -16,8 +16,9 @@ description: "Phase 2: plan.md + tasks.md の作成"
 
 ## 前提
 
-- `.claude/context/research.md` が存在すること（存在しない場合はユーザーに通知）
-- research.md の**データフローセクション**を必ず参照し、既存の変数/コールバック/ファイル形式との整合性を確認すること
+- `.claude/context/research.md` が存在すること（存在しない場合はユーザーに通知し、判断を仰ぐ）
+  - research.md なしで進める判断になった場合は、plan.md 冒頭に「前提」節を設けて必要な範囲（既存インターフェース・データフロー）を本 plan 内で簡潔に要約すること
+- research.md（または上記要約）の**データフローセクション**を必ず参照し、既存の変数/コールバック/ファイル形式との整合性を確認すること
 
 ## 仕様確認ステップ（条件付き）
 
@@ -39,7 +40,7 @@ plan.md, tasks.md must include:
 2. Non-objectives (what is explicitly NOT in scope)
 3. Approach (technical strategy, alternatives with trade-offs)
 4. File-level change list (full paths, what changes in each)
-5. Implementation details (code snippets based on actual codebase)
+5. Implementation details — 関数シグネチャ・データ構造・差分指針を簡潔に記述（完全な実装コードは書かない。implement フェーズで実装）
 6. **Data flow impact analysis** — 変更によって影響を受けるデータフロー（コールバック、設定値、ファイル I/O）の全経路を明示
 7. **Script dependency changes** — 追加/削除/変更される import、関数呼び出し、変数の受け渡しの一覧
 8. Risk + rollback plan
@@ -73,21 +74,22 @@ Rules:
 ## 構造ルール
 
 ### ファイル分離
-- plan.md: 設計判断 + アーキテクチャ + テーブル定義（状態遷移、コールバック契約等）
+- plan.md: 設計判断 + アーキテクチャ + テーブル定義 + 関数シグネチャ・差分指針（implement フェーズへの方針提示）
 - tasks.md: タスク分解 + DoD（plan.md の仕様は参照のみ、コピーしない）
-- snippets.md: コードスニペット集（擬似コードとして明記）
+- snippets.md（**任意・例外**）: plan.md にコードを書ききれない大規模変更があった場合のみ作成
 
 ### Single Source of Truth
 - 状態遷移表、コールバック契約表等の仕様テーブルは plan.md に **1箇所のみ** 定義
 - tasks.md の DoD は「plan.md §X.Y の期待値と一致すること」と参照形式で記述
-- コードスニペットは snippets.md に配置、plan.md では「snippets.md §X 参照」とのみ記述
 
-### snippets.md のルール
-- 先頭に「⚠️ 設計意図を示す擬似コード。実装時に正確な構文に整えること」を明記
-- Codex レビューでは構文の厳密性は検証対象外
+### snippets.md を作る判断基準
+- **基本は作らない**。plan.md 内に短いコード断片（数行〜十数行）で意図を伝えれば十分。
+- 作るケース: 改修対象が極めて多く、ファイル間の差分パターンを並べる必要がある場合のみ。
+- 作る場合は「擬似コード前提・構文ラフ」を貫き、正コードを書かない（Codex レビューで構文指摘を誘発しないため）。
+- 先頭に「⚠️ 設計意図を示す擬似コード。実装時に正確な構文に整えること」を明記。
 
 ### サイズガイドライン（目安）
-- plan.md: ~500行を超えたら snippets.md への分離を検討
+- plan.md: ~700行を超えたらタスクの粒度を見直し（snippets.md 分離は最後の手段）
 - tasks.md: ~300行を超えたらタスクの粒度を見直し
 - （プロジェクト規模に応じて柔軟に調整）
 
@@ -99,7 +101,7 @@ Rules:
   ```
   これは codex-plan-review がユーザー要望カバレッジを検証するために使用する。
 - `.claude/context/tasks.md`
-- `.claude/context/snippets.md`（コードスニペットがある場合）
+- `.claude/context/snippets.md`（任意：plan.md に収まらない大規模変更の場合のみ作成）
 
 ## 注意
 
