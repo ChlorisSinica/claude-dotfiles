@@ -28,37 +28,37 @@ python scripts/setup.py -f --codex  # 管理下のファイルを上書き更新
 
 `codex-main` は次の 3 層で構成します．
 
-- グローバルな呼び出し
-  - `$init-project`（smart: manifest 有なら update，無なら init）
-  - 必要なら Claude Code から `/init-project -t codex-main ...`
 - Python 本体
   - `codex-main` の正規実装は `~/.claude/scripts/init-project.py`
   - 新規作成: `-t codex-main <preset>`
   - 既存 repo 更新: 引数省略で smart update，または `--update` 明示
   - 強制再作成: `--fresh`
   - preset 不一致: 終了コード 3 と警告．承認は `--accept-preset-change`
+- グローバルなショートカット
+  - `$init-project`（smart: manifest 有なら update，無なら init）
+  - 必要なら Claude Code から `/init-project -t codex-main ...`
 - プロジェクト内のワークフロー
   - 調査，計画，実装は `.agents/skills/*` と `.agents/prompts/*`
   - review / verify の機械処理だけ `.agents/scripts/run-codex-*.py` と `.claude/scripts/run-verify.py`
 
-要するに，`$init-project` は唯一の呼び出し，`.py` は雛形の作成と更新の本体，日々の開発フローはプロジェクト内の `.agents/` で回す構成です．
+要するに，雛形の作成と更新は `init-project.py` が本体で，`$init-project` は Codex からの入口です．日々の開発フローはプロジェクト内の `.agents/` で回します．
 
 ## 最短フロー
 
 新規プロジェクト:
 
 ```text
-$init-project ahk
+<python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk
 ```
 
 既存プロジェクトの更新（smart mode）:
 
 ```text
-$init-project ahk   # preset 引数 → update + preset 確認
-$init-project       # 引数省略 → manifest から preset / template を復元
+<python-launcher> ~/.claude/scripts/init-project.py ahk       # preset 引数 → update + preset 確認
+<python-launcher> ~/.claude/scripts/init-project.py           # 引数省略 → manifest から preset / template を復元
 ```
 
-Python から直接呼ぶ場合:
+Codex からは `$init-project ahk` / `$init-project` でも同じ処理を呼び出せます．主な直接呼び出し:
 
 ```text
 <python-launcher> ~/.claude/scripts/init-project.py -t codex-main ahk    # 新規作成
@@ -77,34 +77,34 @@ Python から直接呼ぶ場合:
 Codex-first で進めるときの基本フロー:
 
 ```text
-$init-project → $codex-research → $codex-plan
-              → $codex-plan-review
-              → $sonnet-dp-research-bridge（必要時のみ）
-              → $codex-implement → $codex-impl-review
+init-project.py → codex-research → codex-plan
+                → codex-plan-review
+                → sonnet-dp-research-bridge（必要時のみ）
+                → codex-implement → codex-impl-review
 ```
 
 役割:
 
-- `$codex-research` はコードベース理解を `.agents/context/research.md` に残す
-- `$codex-plan` は設計とタスクリストを `.agents/context/plan.md`, `.agents/context/tasks.md` に残す
-- `$codex-plan-review` は plan/tasks を設計判断と記述品質に分けて収束レビューし，中間結果を `.agents/context/codex_plan_*.md`，共有用結果を `.agents/reviews/` に残す
-- `$codex-implement` は task 単位で実装し，drift audit，verify wrapper fallback，runtime の boundary-based triage を入れつつ `.claude/scripts/run-verify.py` で検証する
-- `$codex-impl-review` は実装変更を品質・整合性・recovery を切り分けながら収束レビューし，中間結果を `.agents/context/codex_impl_review.md`，共有用結果を `.agents/reviews/impl-review.md` に残す
-- `$handover-skills` は長い cycle の skill 問題点と再開手順を handover artifact に残す
+- `codex-research` skill はコードベース理解を `.agents/context/research.md` に残す
+- `codex-plan` skill は設計とタスクリストを `.agents/context/plan.md`, `.agents/context/tasks.md` に残す
+- `codex-plan-review` skill は plan/tasks を設計判断と記述品質に分けて収束レビューし，中間結果を `.agents/context/codex_plan_*.md`，共有用結果を `.agents/reviews/` に残す
+- `codex-implement` skill は task 単位で実装し，drift audit，verify wrapper fallback，runtime の boundary-based triage を入れつつ `.claude/scripts/run-verify.py` で検証する
+- `codex-impl-review` skill は実装変更を品質・整合性・recovery を切り分けながら収束レビューし，中間結果を `.agents/context/codex_impl_review.md`，共有用結果を `.agents/reviews/impl-review.md` に残す
+- `handover-skills` skill は長い cycle の skill 問題点と再開手順を handover artifact に残す
 - review runner の正規実行経路は `<python-launcher> .agents/scripts/run-codex-*.py ...`
 - review runner の既定 model / reasoning effort は `gpt-5.4 / high`
 - `xhigh` は architecture の難所や 1 回限りの深掘りだけに使い，通常 rerun の既定にはしない
 - `gpt-5.4-mini` は軽量 rerun 専用で，architecture gate や final gate の既定にはしない
 - review runner の `codex review` 実行には既定で 600 秒の timeout がある．大きい review や一時的な backend 遅延で延ばしたい場合だけ `--review-timeout-sec <seconds>` を追加する
 - review runner は 1 実行 = 1 cycle の bundle 作成，`codex review -` 実行，結果保存だけを担う
-- `$codex-review` は単発の ad-hoc review 用に残す
-- `$sonnet-dp-research-bridge` は外部調査が必要な論点だけ Claude / Sonnet に人力委譲する
+- `codex-review` skill は単発の ad-hoc review 用に残す
+- `sonnet-dp-research-bridge` skill は外部調査が必要な論点だけ Claude / Sonnet に人力委譲する
 - review runner は `.agents/reviews/sessions.json` に cycle 数の観測値と APPROVED 記録を残す
 
 補足:
 
-- 既存プロジェクトの更新も `$init-project`（smart mode で更新に遷移）．旧 `$update-workflow` は廃止済み
-- 小さな修正では `$codex-research` や `$codex-review` を軽量化してよい
+- 既存プロジェクトの更新も `init-project.py`（smart mode で更新に遷移）．Codex からの `$init-project` は同じ処理のショートカット．旧 `$update-workflow` は廃止済み
+- 小さな修正では `codex-research` や `codex-review` を軽量化してよい
 
 ## 責務分担
 
@@ -163,7 +163,7 @@ $init-project → $codex-research → $codex-plan
 ## Troubleshooting
 
 - plugin manifest の warning `ignoring interface.defaultPrompt: prompt must be at most 128 characters` は，最新の Python review runner と `scripts/setup.py --codex` が `fix_codex_plugin_prompts.py` を best-effort 実行して抑制する
-- `CreateProcessAsUserW failed: 5` / `windows sandbox: runner error` が出る場合，最新の review runner は `windows.sandbox="unelevated"` で自動再試行する．古い project runner では fallback がないため，`/init-project --update` または `<python-launcher> ~/.claude/scripts/init-project.py --update` で runner を更新する
+- `CreateProcessAsUserW failed: 5` / `windows sandbox: runner error` が出る場合，最新の review runner は `windows.sandbox="unelevated"` で自動再試行する．古い project runner では fallback がないため，`<python-launcher> ~/.claude/scripts/init-project.py --update` で runner を更新する
 - review 本文の `VERDICT:` は最後の非空行だけを有効扱いにする．warning や補足文で末尾が汚れた場合は fallback verdict を補って保存する
 - `plugins/* 403 Forbidden` や shell snapshot warning は本文に混ぜないように分離するが，Codex 本体側の warning なので実行時間そのものは短縮しない．小規模 review で 10 分を超える場合は warning より backend 側または sandbox 初回失敗の影響を疑う
 

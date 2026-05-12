@@ -2,24 +2,26 @@
 
 研究サーベイ用テンプレートの概要です．
 
-## 呼び出し方
+## 初期化
 
 ```text
-/init-project survey-cv  # Computer Vision 分野
-/init-project survey-ms  # 材料科学分野
+python ~/.claude/scripts/init-project.py survey-cv  # Computer Vision 分野
+python ~/.claude/scripts/init-project.py survey-ms  # 材料科学分野
 ```
+
+Claude Code からは `/init-project survey-cv` / `/init-project survey-ms` でも同じ template を生成できます．
 
 ## ワークフロー
 
 ```text
-/init-project survey-cv → /scope <topic>
-                        → /search → /read → /outline
-                        → /draft → /review → /convert
+python ~/.claude/scripts/init-project.py survey-cv
+→ /scope <topic> → /search → /read → /outline
+→ /draft → /review → survey-convert.py
 ```
 
 ## 前提
 
-- `/convert` には Pandoc が必要
+- `survey-convert.py` には Pandoc が必要
 - 研究テンプレートでは `.claude/settings.local.json.bak` が生成される
 
 Pandoc 導入例:
@@ -33,7 +35,7 @@ winget install --id JohnMacFarlane.Pandoc
 - `/search` — `WebSearch`
 - `/read` — `WebFetch`, `Bash(pqa/paper/marker_single)`
 - `/review` — `Bash(python -c ... semanticscholar)`, `WebSearch`
-- `/convert` — `Bash(pandoc/bibcure)`
+- `survey-convert.py`（`/convert` から呼び出し）— `Bash(pandoc/bibcure)`
 
 ## 関連ページ
 

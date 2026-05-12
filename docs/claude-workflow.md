@@ -22,23 +22,25 @@ python scripts/setup.py -f  # 管理下のファイルを上書き更新
 
 ## 主な呼び出し
 
-`/init-project` は **smart mode** の唯一の呼び出しコマンドです．旧 `/update-workflow` / `/update-skills` は統合・削除されました．
+雛形の作成と更新の本体は `~/.claude/scripts/init-project.py` です．Claude Code では `/init-project` から同じ処理を呼び出せます．旧 `/update-workflow` / `/update-skills` は統合・削除されました．
 
 新規プロジェクト:
 
 ```text
-/init-project python-pytorch
+python ~/.claude/scripts/init-project.py python-pytorch
 ```
 
 既存プロジェクトの workflow 更新（smart mode で自動遷移）:
 
 ```text
-/init-project python-pytorch            # preset 確認付きで更新
-/init-project                           # preset を manifest から復元
-/init-project --update python-pytorch   # 更新を明示（manifest 無ならエラー）
+python ~/.claude/scripts/init-project.py python-pytorch            # preset 確認付きで更新
+python ~/.claude/scripts/init-project.py                           # preset を manifest から復元
+python ~/.claude/scripts/init-project.py --update python-pytorch   # 更新を明示（manifest 無ならエラー）
 ```
 
-## `/init-project` 概要
+Claude Code からは上記を `/init-project ...` として実行できます．
+
+## `init-project.py` 概要
 
 - 既定テンプレートは `project-init`
 - `survey-cv`, `survey-ms` は preset 名から `research-survey` を自動推論
@@ -50,11 +52,11 @@ python scripts/setup.py -f  # 管理下のファイルを上書き更新
 例:
 
 ```text
-/init-project python                                    # 新規作成または既存更新
-/init-project survey-cv                                 # research-survey preset
-/init-project -t codex-main python                      # Codex-first 新規
-/init-project python --fresh                            # 強制再作成
-/init-project python-pytorch --accept-preset-change     # preset 差し替え承認
+python ~/.claude/scripts/init-project.py python                                    # 新規作成または既存更新
+python ~/.claude/scripts/init-project.py survey-cv                                 # research-survey preset
+python ~/.claude/scripts/init-project.py -t codex-main python                      # Codex-first 新規
+python ~/.claude/scripts/init-project.py python --fresh                            # 強制再作成
+python ~/.claude/scripts/init-project.py python-pytorch --accept-preset-change     # preset 差し替え承認
 ```
 
 生成直後の注意:
@@ -64,20 +66,20 @@ python scripts/setup.py -f  # 管理下のファイルを上書き更新
 
 ## ワークフロー更新
 
-`/init-project` が smart mode で自動的に更新モードへ遷移します．従来の `/update-workflow` と同じ挙動です:
+`init-project.py` が smart mode で自動的に更新モードへ遷移します．従来の `/update-workflow` と同じ挙動です:
 
 - `.claude/context/` と runtime state を保持しつつ，template-managed files を更新
 - `-t codex-main` では `.agents/context/` と `.agents/reviews/` を保持しつつ Codex-first asset を更新
-- 既存プロジェクト（manifest 有）で `/init-project` を単独で打てば preset も manifest から復元
+- 既存プロジェクト（manifest 有）で `init-project.py` を引数なしで実行すれば preset も manifest から復元
 
 ## 開発ワークフロー
 
 Claude Code 主体で進めるときの基本フロー:
 
 ```text
-/init-project → /research → /plan → /sonnet-dp-research（省略可）
-              → /codex-plan-review → /implement → /codex-impl-review
-              → /handover, /retro
+init-project.py → /research → /plan → /sonnet-dp-research（省略可）
+                → /codex-plan-review → /implement → /codex-impl-review
+                → /handover, /retro
 ```
 
 補足:
@@ -95,7 +97,7 @@ Claude Code 主体で進めるときの基本フロー:
 
 この節は `.claude/settings.local.json` を使う workflow 向けです．
 
-`/init-project` 実行時に `.claude/settings.local.json.bak` が生成されます．必要なときだけ有効化してください．
+`init-project.py` 実行時に `.claude/settings.local.json.bak` が生成されます．必要なときだけ有効化してください．
 
 ```bash
 cd /path/to/your/project
