@@ -5,44 +5,16 @@
 ## 統合コマンド
 
 ```bat
-~/claude-dotfiles/windows-terminal/setup-terminal.bat git-bash-profile
-~/claude-dotfiles/windows-terminal/setup-terminal.bat bell
-~/claude-dotfiles/windows-terminal/setup-terminal.bat pwsh
-~/claude-dotfiles/windows-terminal/setup-terminal.bat toast enable [project_dir]
-~/claude-dotfiles/windows-terminal/setup-terminal.bat toast disable [project_dir]
+~/claude-dotfiles/windows-terminal/setup-terminal.bat git-bash-profile # Git Bash profileの追加 (Windows Terminal設定は保持)
+
+~/claude-dotfiles/windows-terminal/setup-terminal.bat bell # PowerShell / Windows PowerShell / Git Bash の bell を有効化
+
+~/claude-dotfiles/windows-terminal/setup-terminal.bat pwsh # pwsh (PowerShell7)のインストール. インストール済みの場合skip, --forceで再インストール
+
+~/claude-dotfiles/windows-terminal/setup-terminal.bat toast enable [project_dir] # 対象プロジェクトの .claude/settings.json に通知 hook を追加．project_dir 省略時はカレントディレクトリを使用
+
+~/claude-dotfiles/windows-terminal/setup-terminal.bat toast disable [project_dir] # 対象プロジェクトの .claude/settings.json から通知 hook だけを削除．project_dir 省略時はカレントディレクトリを使用
 ```
-
-`project_dir` を省略するとカレントディレクトリが対象になります．
-
-## 個別コマンド
-
-`windows-terminal/_setup-git-bash-profile.bat`
-
-- 既存の Windows Terminal 設定を保持したまま Git Bash profile を追加
-
-`windows-terminal/_setup-terminal-bell.bat`
-
-- PowerShell / Windows PowerShell / Git Bash の bell を有効化
-
-`windows-terminal/_setup-toast-notify.bat --enable [project_dir]`
-
-- 対象プロジェクトの `.claude/settings.json` に通知 hook を追加
-- `project_dir` 省略時はカレントディレクトリを使用
-
-`windows-terminal/_setup-toast-notify.bat --disable [project_dir]`
-
-- 通知用 hook だけを削除
-- `project_dir` 省略時はカレントディレクトリを使用
-
-`windows-terminal/_setup-git-bash-bell.bat`
-
-- Git Bash の bell だけを個別に有効化
-
-`windows-terminal/_setup-pwsh.bat [--no-pause] [--force]`
-
-- PowerShell 7 (`pwsh`) を winget 経由でインストール
-- 既にインストール済みなら version を表示して skip（`--force` で再インストール）
-- winget 不在時は Microsoft Store の "App Installer" または公式リリースページを案内
 
 ## 設定同期
 

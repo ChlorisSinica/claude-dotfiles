@@ -74,6 +74,16 @@ set "INSTALL_STATUS=%ERRORLEVEL%"
 if not "%INSTALL_STATUS%"=="0" (
     echo.
     echo ERROR: winget install failed with exit code %INSTALL_STATUS%.
+    echo.
+    echo Troubleshooting:
+    echo  - If the installer reported 0x80072ee2, winget likely timed out while reaching Microsoft package sources.
+    echo  - Check network, VPN/proxy, and Microsoft Store App Installer.
+    echo  - Then try:
+    echo      winget source update
+    echo      winget search --id Microsoft.PowerShell -e
+    echo      "%~f0"
+    echo  - Manual installer:
+    echo      https://github.com/PowerShell/PowerShell/releases
     if not "%FLAG_NO_PAUSE%"=="1" pause
     exit /b %INSTALL_STATUS%
 )
