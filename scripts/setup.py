@@ -180,20 +180,14 @@ def write_manifest(path: Path, entries: set[Path]) -> None:
     write_json_file(path, {"managed": [entry.as_posix() for entry in sorted(entries)]})
 
 
-def shell_join(command: list[str]) -> str:
-    if os.name == "nt":
-        return subprocess_list2cmdline(command)
-    return shlex.join(command)
-
-
-def subprocess_list2cmdline(command: list[str]) -> str:
-    import subprocess
-
-    return subprocess.list2cmdline(command)
-
-
 def build_statusline_command(destination: Path) -> str:
-    return shell_join([sys.executable, str(destination)])
+    # Claude Code on Windows routes statusLine commands through Git Bash (or
+    # PowerShell as a fallback). Git Bash treats unquoted backslashes as escape
+    # characters and silently mangles Windows-style paths, so emit forward
+    # slashes regardless of platform.
+    py = sys.executable.replace("\\", "/")
+    dst = str(destination).replace("\\", "/")
+    return shlex.join([py, dst])
 
 
 def sync_tree(source_root: Path, destination_root: Path, *, force: bool, retired_files: set[Path] | None = None) -> None:
