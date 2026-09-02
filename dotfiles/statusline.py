@@ -105,6 +105,9 @@ def tilde_path(p):
     return posix
 
 model = data.get('model', {}).get('display_name', 'Claude')
+effort = (data.get('effort') or {}).get('level')
+if effort:
+    model += f' {DIM}[{effort}]{R}'
 sep   = f' {DIM}│{R} '
 
 ws = data.get('workspace', {})

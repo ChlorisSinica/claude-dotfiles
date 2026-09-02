@@ -3,14 +3,14 @@
 3 行構成の Claude Code 用カスタムステータスラインです．
 
 ```text
-Opus 4.6 (1M context)
+Opus 4.6 (1M context) [xhigh]
 ~/claude-dotfiles (master)
 ctx ⣄        5% (50k/1.0M) │ 5h ⣤        6% (2h55m) │ 7d ⣿⣿⣿⣤     44% (1d6h)
 ```
 
 ## 表示内容
 
-- 1 行目: モデル名
+- 1 行目: モデル名 + エフォートレベル（`[low]`〜`[max]`．モデルが effort 非対応の場合は非表示）
 - 2 行目: プロジェクトパス（`~` 相対）+ Git ブランチ
 - 3 行目: context 使用量 / 5 時間レート制限 / 7 日レート制限
 - Braille ドットバーを緑 → 黄 → 赤で着色
